@@ -1,0 +1,48 @@
+name: bus_route_finder
+description: "A Flutter project for bus route finding with map integration"
+publish_to: 'none'
+
+# Version and build number
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.2
+  flutter_map: ^4.0.0  # OpenStreetMap-based map package
+  geolocator: ^10.0.1  # Compatible version for Flutter 3.x
+  geocoding: ^2.0.5  # Compatible for address retrieval
+  http: ^0.13.5  # Downgraded to work with google_fonts
+  google_fonts: ^4.0.4  # Updated version compatible with http ^0.13.x
+  provider: ^6.0.5  # Compatible version for Flutter 3.x
+  location: ^5.0.1  # Compatible version for location data
+  flutter_map_marker_cluster: ^1.0.1  # Compatible version
+  mongo_dart: ^0.10.0  # Compatible MongoDB Dart package
+  dotenv: ^4.2.0  # Compatible version for environment variables
+  latlong2: ^0.8.2  # Downgraded to match flutter_map requirements
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - lib/assets/images/d.jpg
+    - lib/assets/images/b.jpg
+    - lib/assets/images/sp.jpg
+    - lib/assets/images/app_logo.jpg
+    - lib/assets/images/app_logo.png
+    - lib/assets/images/splash_screen_bg.jpg
+    - lib/assets/images/routescreenbg.jpg
+
+# Flutter Launcher Icons Configuration
+flutter_icons:
+  android: true
+  ios: true
+  image_path: lib/assets/images/app_logo.png  # Ensure the logo file matches the one you want to use for your app icon
