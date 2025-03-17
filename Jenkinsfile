@@ -1,12 +1,9 @@
 pipeline {
     agent any
-
-environment {
-    NEXUS_CREDENTIALS = credentials('NEXUS_CREDENTIALS')
-    GITHUB_CREDENTIALS = credentials('GITHUB_CREDENTIALS')
-}
     
     environment {
+        NEXUS_CREDENTIALS = credentials('NEXUS_CREDENTIALS')
+        GITHUB_CREDENTIALS = credentials('GITHUB_CREDENTIALS')
         NEXUS_URL = "http://localhost:8081/repository/ci-artifacts"
         NEXUS_CREDENTIALS = credentials('NEXUS_CREDENTIALS') // Stored in Jenkins
         FLUTTER_BUILD = "flutter-app.apk"
