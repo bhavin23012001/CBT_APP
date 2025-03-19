@@ -13,7 +13,7 @@ pipeline {
             steps {
                 script {
                     try {
-                        sh "git clone --depth=1 --filter=blob:none https://github.com/Bhavin2301/CBT_APP.git"
+                        sh "git clone --depth=10 --filter=blob:none https://github.com/Bhavin2301/CBT_APP.git"
                     } catch (Exception e) {
                         echo "❌ Git Clone Failed! Check credentials & network."
                         error("Git Clone Failed")
