@@ -9,18 +9,54 @@ class SplashScreen extends StatefulWidget {
   _SplashScreenState createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _fadeAnimation;
+
   @override
   void initState() {
     super.initState();
+
+    // Initialize animation controller
+    _animationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 1500),
+    );
+
+    // Create scale and fade animations
+    _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.elasticOut,
+      ),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    // Start animations
+    _animationController.forward();
+
+    // Location tracking
     LocationManager().startListening((Position position) {
-      print("Location in SplashScreen: \${position.latitude}, \${position.longitude}");
+      print("Location in SplashScreen: ${position.latitude}, ${position.longitude}");
     });
 
-    // Navigate with an advanced transition after 3 seconds
-    Timer(Duration(seconds: 3), () {
+    // Navigate after animation and delay
+    Future.delayed(Duration(seconds: 3), () {
       Navigator.of(context).pushReplacement(_createRoute());
     });
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   Route _createRoute() {
@@ -30,21 +66,10 @@ class _SplashScreenState extends State<SplashScreen> {
         var fadeAnimation = Tween(begin: 0.0, end: 1.0).animate(
           CurvedAnimation(parent: animation, curve: Curves.easeInOut),
         );
-        var slideAnimation = Tween(begin: Offset(0.0, 1.0), end: Offset.zero).animate(
-          CurvedAnimation(parent: animation, curve: Curves.easeInOutCubic),
-        );
-        var scaleAnimation = Tween(begin: 0.8, end: 1.0).animate(
-          CurvedAnimation(parent: animation, curve: Curves.fastOutSlowIn),
-        );
+
         return FadeTransition(
           opacity: fadeAnimation,
-          child: SlideTransition(
-            position: slideAnimation,
-            child: ScaleTransition(
-              scale: scaleAnimation,
-              child: child,
-            ),
-          ),
+          child: child,
         );
       },
     );
@@ -53,62 +78,104 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: ColorFiltered(
-              colorFilter: ColorFilter.mode(
-                  Colors.white.withOpacity(0.6),
-                  BlendMode.srcOver
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF1A237E), // Deep indigo
+              Color(0xFF303F9F), // Indigo
+              Color(0xFF3949AB), // Lighter indigo
+            ],
+          ),
+        ),
+        child: Stack(
+          children: [
+            // Background pattern
+            Opacity(
+              opacity: 0.05,
+              child: Container(
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage('lib/assets/images/pattern.png'),
+                    repeat: ImageRepeat.repeat,
+                  ),
+                ),
               ),
-              child: Image.asset(
-                'lib/assets/images/splash_screen_bg.jpg',
-                fit: BoxFit.cover,
+            ),
+
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Animated Logo
+                  ScaleTransition(
+                    scale: _scaleAnimation,
+                    child: FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: Hero(
+                        tag: 'app_logo',
+                        child: Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(40),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 20,
+                                offset: Offset(0, 10),
+                              ),
+                            ],
+                          ),
+                          child: Image.asset(
+                            'lib/assets/images/re.png',
+                            width: 180,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 32),
+
+                  // Loading Indicator
+                  CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 3,
+                  ),
+                ],
               ),
             ),
-          ),
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Hero(
-                  tag: 'app_logo',
-                  child: Image.asset(
-                    'lib/assets/images/app_logo.png',
-                    height: 120,
+
+            // Footer
+            Positioned(
+              bottom: 20,
+              left: 0,
+              right: 0,
+              child: Column(
+                children: [
+                  Text(
+                    'Made with ❤️ In INDIA',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                SizedBox(height: 20),
-                CircularProgressIndicator(color: Colors.white),
-              ],
+                  SizedBox(height: 5),
+                  Text(
+                    '© 2025 CBT AHMEDABAD. All rights reserved.',
+                    style: TextStyle(
+                      color: Colors.white54,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Positioned(
-            bottom: 20,
-            left: 0,
-            right: 0,
-            child: Column(
-              children: [
-                Text(
-                  'Made with ❤️ In INDIA',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 5),
-                Text(
-                  '© 2025 CBT AHMEDABAD. All rights reserved.',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
