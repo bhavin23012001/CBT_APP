@@ -35,8 +35,7 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Verify AWS CLI Installation
-          run: aws --version
-
+        run: aws --version  
 
       - name: Upload APK to AWS S3
         run: |
