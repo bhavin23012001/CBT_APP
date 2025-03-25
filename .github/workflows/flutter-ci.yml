@@ -35,11 +35,11 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Verify AWS CLI Installation
-        run: aws --version  
+        run: aws --version
 
       - name: Upload APK to AWS S3
         run: |
           aws s3 cp build/app/outputs/flutter-apk/app-release.apk s3://${{ secrets.S3_BUCKET_NAME }}/app-release.apk --acl public-read
-
+          
       - name: Print APK Download Link
         run: echo "APK is available at: https://${{ secrets.S3_BUCKET_NAME }}.s3.amazonaws.com/app-release.apk"
