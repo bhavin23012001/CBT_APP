@@ -25,6 +25,19 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
+      - name: Run Security Scans (OWASP Dependency Check)
+        run: |
+          curl -LO https://github.com/jeremylong/DependencyCheck/releases/download/v8.3.1/dependency-check-8.3.1-release.zip
+          unzip dependency-check-8.3.1-release.zip
+          ./dependency-check/bin/dependency-check.sh --project "FlutterApp" --scan . --format "ALL"
+
+      - name: Run Security Scans (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'your-docker-image'
+          format: 'table'
+          exit-code: '1'
+
       - name: Run Tests
         run: flutter test
 
@@ -64,6 +77,17 @@ jobs:
           S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
         run: echo "🚀 APK is available at:https://${{ secrets.S3_BUCKET_NAME }}.s3.amazonaws.com/app-v${{ env.APP_VERSION }}.apk"
 
+      - name: Deploy AWS Infrastructure (Terraform)
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: latest
+
+      - name: Initialize & Apply Terraform
+        run: |
+          cd terraform
+          terraform init
+          terraform apply -auto-approve
+
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
@@ -72,4 +96,7 @@ jobs:
           body: "🚀 New release available! [Download APK](https://${{ secrets.S3_BUCKET_NAME }}.s3.amazonaws.com/app-v${{ env.APP_VERSION }}.apk)"
           draft: false
           prerelease: false
-          token: ${{ secrets.GH_PAT }}  # ✅ Use Personal Access Token
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Export CI/CD Metrics to Prometheus
+        run: echo "ci_cd_build_duration=$(date +%s)" >> metrics.prom
