@@ -51,4 +51,4 @@ jobs:
       - name: Print APK Download Link
         env:
           S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
-        run: echo "APK is available at:https://$S3_BUCKET_NAME.s3.amazonaws.com/app-release.apk"
+        run: echo "APK is available at:https://${{ secrets.S3_BUCKET_NAME }}.s3.amazonaws.com/app-release.apk"
