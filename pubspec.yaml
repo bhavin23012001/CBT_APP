@@ -23,6 +23,8 @@ dependencies:
   mongo_dart: ^0.10.0  # Compatible MongoDB Dart package
   dotenv: ^4.2.0  # Compatible version for environment variables
   latlong2: ^0.8.2  # Downgraded to match flutter_map requirements
+  animate_do: ^3.0.2
+  lottie: ^2.6.0
 
 dev_dependencies:
   flutter_test:
@@ -40,6 +42,8 @@ flutter:
     - lib/assets/images/app_logo.png
     - lib/assets/images/splash_screen_bg.jpg
     - lib/assets/images/routescreenbg.jpg
+    - lib/assets/images/pattern.png
+    - lib/assets/images/re.png
 
 # Flutter Launcher Icons Configuration
 flutter_icons:
