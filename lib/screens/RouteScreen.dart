@@ -4,14 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 class TripsRoutesPage extends StatefulWidget {
-  final String? sourceStop;
-  final String? destinationStop;
+  final String? selectedSource;
+  final String? selectedDestination;
 
-  const TripsRoutesPage({
-    Key? key,
-    this.sourceStop,
-    this.destinationStop
-  }) : super(key: key);
+  TripsRoutesPage({this.selectedSource, this.selectedDestination});
 
   @override
   _TripsRoutesPageState createState() => _TripsRoutesPageState();
@@ -20,8 +16,9 @@ class TripsRoutesPage extends StatefulWidget {
 class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProviderStateMixin {
   int? expandedIndex;
   List<dynamic> busRoutes = [];
-  List<dynamic> filteredRoutes = [];
+  List<dynamic> filteredRoutes = []; // To store filtered routes for Favorites
   bool _isLoading = true;
+  bool _showingFavorites = false; // To track if Favorites view is active
 
   // Animation controllers
   late AnimationController _animationController;
@@ -71,41 +68,9 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
     try {
       final response = await http.get(Uri.parse('https://cbt-backend-02ce.onrender.com/bus_routes'));
       if (response.statusCode == 200) {
-        final allRoutes = json.decode(response.body);
-
-        // Filter routes if source and destination are provided
-        if (widget.sourceStop != null && widget.destinationStop != null) {
-          filteredRoutes = allRoutes.where((route) {
-            // Ensure route has stops and they are a list
-            if (route['stops'] == null || !(route['stops'] is List)) return false;
-
-            // Check if route contains both source and destination stops
-            bool hasSourceStop = route['stops'].any((stop) =>
-            stop['name'].toString().toLowerCase() == widget.sourceStop!.toLowerCase());
-
-            bool hasDestinationStop = route['stops'].any((stop) =>
-            stop['name'].toString().toLowerCase() == widget.destinationStop!.toLowerCase());
-
-            // Ensure source stop comes before destination stop
-            if (hasSourceStop && hasDestinationStop) {
-              int sourceIndex = route['stops'].indexWhere((stop) =>
-              stop['name'].toString().toLowerCase() == widget.sourceStop!.toLowerCase());
-
-              int destIndex = route['stops'].indexWhere((stop) =>
-              stop['name'].toString().toLowerCase() == widget.destinationStop!.toLowerCase());
-
-              return sourceIndex < destIndex;
-            }
-
-            return false;
-          }).toList();
-        } else {
-          // If no source/destination provided, show all routes
-          filteredRoutes = allRoutes;
-        }
-
         setState(() {
-          busRoutes = filteredRoutes;
+          busRoutes = json.decode(response.body);
+          filteredRoutes = List.from(busRoutes); // Initially show all routes
           _isLoading = false;
         });
       } else {
@@ -118,6 +83,33 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
       });
       _showErrorSnackbar("Could not load bus routes. Please check your connection.");
     }
+  }
+
+  void _filterFavoriteRoutes() {
+    if (widget.selectedSource == null || widget.selectedDestination == null) {
+      _showErrorSnackbar("Please select source and destination from Home screen first.");
+      return;
+    }
+
+    setState(() {
+      _showingFavorites = true;
+      filteredRoutes = busRoutes.where((route) {
+        final stops = route['stops'] as List<dynamic>? ?? [];
+        final stopNames = stops.map((stop) => stop['name'].toString()).toList();
+        return stopNames.contains(widget.selectedSource) && stopNames.contains(widget.selectedDestination);
+      }).toList();
+    });
+
+    if (filteredRoutes.isEmpty) {
+      _showErrorSnackbar("No routes found with the selected stops.");
+    }
+  }
+
+  void _resetToAllRoutes() {
+    setState(() {
+      _showingFavorites = false;
+      filteredRoutes = List.from(busRoutes);
+    });
   }
 
   void _showErrorSnackbar(String message) {
@@ -158,22 +150,22 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
     return Scaffold(
       body: Stack(
         children: [
-          // Gradient background (same as previous implementation)
+          // Gradient background
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0xFF1A237E), // Deep indigo
-                  Color(0xFF303F9F), // Indigo
-                  Color(0xFF3949AB), // Lighter indigo
+                  Color(0xFF1A237E),
+                  Color(0xFF303F9F),
+                  Color(0xFF3949AB),
                 ],
               ),
             ),
           ),
 
-          // Background pattern (same as previous implementation)
+          // Background pattern
           Opacity(
             opacity: 0.05,
             child: Container(
@@ -189,7 +181,7 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
           SafeArea(
             child: Column(
               children: [
-                // App bar (same as previous implementation)
+                // App bar with back button and title
                 FadeTransition(
                   opacity: _fadeInAnimation,
                   child: Padding(
@@ -229,18 +221,15 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
                         SizedBox(width: 16),
                         Expanded(
                           child: Text(
-                            widget.sourceStop != null && widget.destinationStop != null
-                                ? "Routes via ${widget.sourceStop} to ${widget.destinationStop}"
-                                : "Available Routes",
+                            _showingFavorites ? "Your Routes" : "Available Routes",
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 18,
+                              fontSize: 20,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 0.5,
                             ),
                           ),
                         ),
-                        // App logo small version (same as previous implementation)
                         Hero(
                           tag: 'app_logo',
                           child: Container(
@@ -256,8 +245,8 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
                               ],
                             ),
                             child: Image.asset(
-                              'lib/assets/images/re.png',
-                              width: 70,
+                              'lib/assets/images/app_logo.png',
+                              width: 40,
                             ),
                           ),
                         ),
@@ -266,7 +255,7 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
                   ),
                 ),
 
-                // Info card with route filtering information
+                // Info card
                 FadeTransition(
                   opacity: _fadeInAnimation,
                   child: AnimatedOpacity(
@@ -277,10 +266,7 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
                       duration: Duration(milliseconds: 800),
                       curve: Curves.easeOut,
                       transform: Matrix4.translationValues(
-                          0,
-                          _showContent ? 0 : 30,
-                          0
-                      ),
+                          0, _showContent ? 0 : 30, 0),
                       child: Container(
                         margin: EdgeInsets.fromLTRB(16, 8, 16, 16),
                         padding: EdgeInsets.all(16),
@@ -305,7 +291,7 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    "Route Guidance",
+                                    "Bus Routes Information",
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
@@ -314,9 +300,7 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
                                   ),
                                   SizedBox(height: 4),
                                   Text(
-                                    widget.sourceStop != null && widget.destinationStop != null
-                                        ? "Showing routes between ${widget.sourceStop} and ${widget.destinationStop}"
-                                        : "Tap on a route to see all the bus stops. All timings are approximate.",
+                                    "Tap on a route to see all the bus stops. All timings are approximate.",
                                     style: TextStyle(
                                       fontSize: 13,
                                       color: Colors.black54,
@@ -358,7 +342,7 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
                     opacity: _showContent ? 1.0 : 0.0,
                     duration: Duration(milliseconds: 800),
                     curve: Curves.easeOut,
-                    child: busRoutes.isEmpty
+                    child: filteredRoutes.isEmpty
                         ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -370,24 +354,23 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
                           ),
                           SizedBox(height: 16),
                           Text(
-                            widget.sourceStop != null && widget.destinationStop != null
-                                ? "No routes found between ${widget.sourceStop} and ${widget.destinationStop}"
+                            _showingFavorites
+                                ? "No routes found"
                                 : "No routes available",
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
-                            textAlign: TextAlign.center,
                           ),
                         ],
                       ),
                     )
                         : ListView.builder(
                       padding: EdgeInsets.fromLTRB(16, 0, 16, 90),
-                      itemCount: busRoutes.length,
+                      itemCount: filteredRoutes.length,
                       itemBuilder: (context, index) {
-                        var route = busRoutes[index];
+                        var route = filteredRoutes[index];
                         bool isExpanded = expandedIndex == index;
 
                         return AnimatedContainer(
@@ -409,7 +392,6 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
                           ),
                           child: Column(
                             children: [
-                              // Card Header (same as previous implementation)
                               Material(
                                 color: Colors.transparent,
                                 child: InkWell(
@@ -432,7 +414,9 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
                                                 crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: [
                                                   Text(
-                                                    (route['busName'] ?? 'UNKNOWN').toString().toUpperCase(),
+                                                    (route['busName'] ?? 'UNKNOWN')
+                                                        .toString()
+                                                        .toUpperCase(),
                                                     style: TextStyle(
                                                       color: Colors.black87,
                                                       fontWeight: FontWeight.bold,
@@ -450,7 +434,8 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
                                                       SizedBox(width: 4),
                                                       Expanded(
                                                         child: Text(
-                                                          (route['startPoint'] ?? 'UNKNOWN').toString(),
+                                                          (route['startPoint'] ?? 'UNKNOWN')
+                                                              .toString(),
                                                           style: TextStyle(
                                                             color: Colors.black54,
                                                             fontSize: 13,
@@ -471,7 +456,8 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
                                                       SizedBox(width: 4),
                                                       Expanded(
                                                         child: Text(
-                                                          (route['endPoint'] ?? 'UNKNOWN').toString(),
+                                                          (route['endPoint'] ?? 'UNKNOWN')
+                                                              .toString(),
                                                           style: TextStyle(
                                                             color: Colors.black54,
                                                             fontSize: 13,
@@ -487,12 +473,18 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
                                             Container(
                                               padding: EdgeInsets.all(4),
                                               decoration: BoxDecoration(
-                                                color: isExpanded ? Colors.red.shade50 : Colors.grey.shade50,
+                                                color: isExpanded
+                                                    ? Colors.red.shade50
+                                                    : Colors.grey.shade50,
                                                 borderRadius: BorderRadius.circular(6),
                                               ),
                                               child: Icon(
-                                                isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                                                color: isExpanded ? Colors.red.shade700 : Colors.grey.shade700,
+                                                isExpanded
+                                                    ? Icons.keyboard_arrow_up
+                                                    : Icons.keyboard_arrow_down,
+                                                color: isExpanded
+                                                    ? Colors.red.shade700
+                                                    : Colors.grey.shade700,
                                                 size: 24,
                                               ),
                                             ),
@@ -500,13 +492,14 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
                                         ),
                                       ),
                                       if (!isExpanded)
-                                        Divider(height: 1, thickness: 1, color: Colors.grey.shade200),
+                                        Divider(
+                                            height: 1,
+                                            thickness: 1,
+                                            color: Colors.grey.shade200),
                                     ],
                                   ),
                                 ),
                               ),
-
-                              // Expanded content with stops
                               AnimatedSize(
                                 duration: Duration(milliseconds: 300),
                                 curve: Curves.easeInOut,
@@ -551,7 +544,10 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
                                           ],
                                         ),
                                       ),
-                                      Divider(height: 1, thickness: 1, color: Colors.grey.shade200),
+                                      Divider(
+                                          height: 1,
+                                          thickness: 1,
+                                          color: Colors.grey.shade200),
                                       ..._buildStopsList(route['stops'] as List<dynamic>),
                                       SizedBox(height: 12),
                                     ],
@@ -570,7 +566,7 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
             ),
           ),
 
-          // Bottom bar with glass effect (same as previous implementation)
+          // Bottom bar with glass effect
           Positioned(
             bottom: 16,
             left: 16,
@@ -583,10 +579,7 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
                 duration: Duration(milliseconds: 800),
                 curve: Curves.easeOut,
                 transform: Matrix4.translationValues(
-                    0,
-                    _showBottomBar ? 0 : 20,
-                    0
-                ),
+                    0, _showBottomBar ? 0 : 20, 0),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
                   child: BackdropFilter(
@@ -633,9 +626,10 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
                             label: "View Schedule",
                             icon: Icons.schedule,
                             onPressed: () {
+                              _resetToAllRoutes(); // Show all routes
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text("Schedule coming soon!"),
+                                  content: Text("Showing all schedules"),
                                   backgroundColor: Colors.blue.shade700,
                                   behavior: SnackBarBehavior.floating,
                                   shape: RoundedRectangleBorder(
@@ -648,12 +642,13 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
                             isPrimary: true,
                           ),
                           _buildNavigationButton(
-                            label: "Favorites",
+                            label: "My Routes",
                             icon: Icons.star,
                             onPressed: () {
+                              _filterFavoriteRoutes(); // Filter based on selected stops
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text("Favorites coming soon!"),
+                                  content: Text("Showing your routes"),
                                   backgroundColor: Colors.green.shade700,
                                   behavior: SnackBarBehavior.floating,
                                   shape: RoundedRectangleBorder(
@@ -677,37 +672,6 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
     );
   }
 
-  // Existing helper methods like _buildRouteNumberBadge, _buildStopsList, etc. remain the same
-  Widget _buildRouteNumberBadge(dynamic route) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.blue.shade800, Colors.blue.shade700],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.red.withOpacity(0.3),
-            blurRadius: 5,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Text(
-        (route['routeNumber'] ?? '?').toString(),
-        style: TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          fontSize: 16,
-        ),
-      ),
-    );
-  }
-
-  // Builds the list of stops within a route
   List<Widget> _buildStopsList(List<dynamic> stops) {
     return stops.map<Widget>((stop) {
       return Container(
@@ -790,7 +754,35 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
     }).toList();
   }
 
-  // Navigation Button Widget (same as previous implementation)
+  Widget _buildRouteNumberBadge(dynamic route) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.blue.shade800, Colors.blue.shade700],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.red.withOpacity(0.3),
+            blurRadius: 5,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Text(
+        (route['routeNumber'] ?? '?').toString(),
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+        ),
+      ),
+    );
+  }
+
   Widget _buildNavigationButton({
     required String label,
     required IconData icon,
