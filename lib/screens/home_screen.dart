@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'map_screen.dart';  // Assuming MapScreen exists
-import 'RouteScreen.dart';  // Assuming RouteScreen exists
+import 'dart:ui'; // For ImageFilter
+import 'map_screen.dart';
+import 'RouteScreen.dart';
 
 class BusStop {
   final String name;
@@ -21,17 +22,54 @@ class HomeScreen extends StatefulWidget {
   _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   BusStop? _selectedSource;
   BusStop? _selectedDestination;
   List<BusStop> busStops = [];
   bool _isLoading = true;
-  final String apiUrl = "http://10.0.2.2:3000/bus_stops"; // Replace with your API URL
+  final String apiUrl = "https://cbt-backend-02ce.onrender.com/bus_stops";
+  late AnimationController _animationController;
+  late Animation<double> _fadeInAnimation = AlwaysStoppedAnimation(0.0);
+
+  // Individual animations for staggered effect
+  bool _showContent = false;
+  bool _showBottomBar = false;
 
   @override
   void initState() {
     super.initState();
     _fetchBusStops();
+
+    // Setup animations
+    _animationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 1000),
+    );
+
+    // Assign the animation properly after controller is initialized
+    _fadeInAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Interval(0.2, 1.0, curve: Curves.easeOut),
+      ),
+    );
+
+    _animationController.forward();
+
+    // Setup staggered animations with Future.delayed
+    Future.delayed(Duration(milliseconds: 400), () {
+      if (mounted) setState(() => _showContent = true);
+    });
+
+    Future.delayed(Duration(milliseconds: 600), () {
+      if (mounted) setState(() => _showBottomBar = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchBusStops() async {
@@ -58,6 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _isLoading = false;
       });
+      _showErrorSnackbar("Could not load bus stops. Please check your connection.");
     }
   }
 
@@ -69,39 +108,88 @@ class _HomeScreenState extends State<HomeScreen> {
           builder: (context) => MapScreen(
             source: _selectedSource!.name,
             destination: _selectedDestination!.name,
-            stopId: _selectedSource!.name, // You can use the stop name or modify as needed
+            stopId: _selectedSource!.name,
           ),
         ),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Please select both source and destination")),
-      );
+      _showErrorSnackbar("Please select both source and destination");
     }
   }
 
   void _findRoute() {
-    if (_selectedSource != null && _selectedDestination != null){
+    if (_selectedSource != null && _selectedDestination != null) {
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => TripsRoutesPage(
-            // source: _selectedSource!.name,
-            // destination: _selectedDestination!.name,
-            // stopId: _selectedSource!.name, // You can use the stop name or modify as needed
-          ),
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => TripsRoutesPage(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            var begin = Offset(1.0, 0.0);
+            var end = Offset.zero;
+            var curve = Curves.ease;
+            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+            return SlideTransition(
+              position: animation.drive(tween),
+              child: child,
+            );
+          },
         ),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Please select both source and destination")),
-      );
+      _showErrorSnackbar("Please select both source and destination");
     }
   }
 
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.white),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.red.shade800,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        duration: Duration(seconds: 3),
+        action: SnackBarAction(
+          label: 'DISMISS',
+          textColor: Colors.white,
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          },
+        ),
+      ),
+    );
+  }
+
   void _showMapImage() {
-    // Logic for displaying a map image (could be a route map, static map, etc.)
     print("Showing map image...");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Map view coming soon!"),
+        backgroundColor: Colors.blue.shade700,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _swapLocations() {
+    setState(() {
+      final temp = _selectedSource;
+      _selectedSource = _selectedDestination;
+      _selectedDestination = temp;
+    });
   }
 
   @override
@@ -109,136 +197,387 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background Image with modern overlay
+          // Gradient background
           Container(
             decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('lib/assets/images/d.jpg'),  // Replace with your image path
-                fit: BoxFit.cover,
-                colorFilter: ColorFilter.mode(
-                  Colors.white.withOpacity(0.6),
-                  BlendMode.darken,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF1A237E), // Deep indigo
+                  Color(0xFF303F9F), // Indigo
+                  Color(0xFF3949AB), // Lighter indigo
+                ],
+              ),
+            ),
+          ),
+
+          // Background pattern
+          Opacity(
+            opacity: 0.05,
+            child: Container(
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('lib/assets/images/pattern.png'),
+                  repeat: ImageRepeat.repeat,
                 ),
               ),
             ),
           ),
-          SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 80),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'City Bus Transport',
-                    style: TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black,
-                      letterSpacing: 1.2,
+
+          SafeArea(
+            child: FadeTransition(
+              opacity: _fadeInAnimation,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 90.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // App Logo with shadow and animation - made smaller
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        TweenAnimationBuilder(
+                          tween: Tween<double>(begin: 0, end: 1),
+                          duration: Duration(milliseconds: 800),
+                          curve: Curves.elasticOut,
+                          builder: (context, double value, child) {
+                            return Transform.scale(
+                              scale: value,
+                              child: child,
+                            );
+                          },
+                          child: Hero(
+                            tag: 'app_logo',
+                            child: Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(40),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 10,
+                                    offset: Offset(0, 5),
+                                  ),
+                                ],
+                              ),
+                              child: Image.asset(
+                                'lib/assets/images/re.png',
+                                width: 120,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    'Ahmedabad City Travel Made Easy',
-                    style: TextStyle(fontSize: 18, color: Colors.black.withOpacity(0.7)),
-                  ),
-                  SizedBox(height: 40),
-                  _isLoading
-                      ? Center(child: CircularProgressIndicator())
-                      : Column(
-                    children: [
-                      // Source Dropdown
-                      _buildDropdownButton(
-                        hint: "Select Source Location",
-                        value: _selectedSource,
-                        onChanged: (BusStop? newValue) {
-                          setState(() {
-                            _selectedSource = newValue;
-                          });
-                        },
+
+                    SizedBox(height: 16),
+
+                    // Main content
+                    Expanded(
+                      child: _isLoading
+                          ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 3,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              "Loading bus stops...",
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                          : AnimatedOpacity(
+                        opacity: _showContent ? 1.0 : 0.0,
+                        duration: Duration(milliseconds: 800),
+                        curve: Curves.easeOut,
+                        child: AnimatedContainer(
+                          duration: Duration(milliseconds: 800),
+                          curve: Curves.easeOut,
+                          transform: Matrix4.translationValues(
+                              0,
+                              _showContent ? 0 : 30,
+                              0
+                          ),
+                          child: Column(
+                            children: [
+                              // Source Location Card
+                              _buildLocationCard(
+                                title: "Source",
+                                icon: Icons.trip_origin,
+                                iconColor: Colors.green,
+                                child: _buildDropdownButton(
+                                  hint: "Select source location",
+                                  value: _selectedSource,
+                                  onChanged: (BusStop? newValue) {
+                                    setState(() {
+                                      _selectedSource = newValue;
+                                    });
+                                  },
+                                ),
+                              ),
+
+                              // Swap button
+                              Center(
+                                child: Container(
+                                  margin: EdgeInsets.symmetric(vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 5,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: IconButton(
+                                    icon: Icon(Icons.swap_vert, color: Colors.blue.shade700),
+                                    onPressed: _swapLocations,
+                                    tooltip: "Swap locations",
+                                    padding: EdgeInsets.all(8),
+                                    constraints: BoxConstraints(),
+                                    iconSize: 20,
+                                  ),
+                                ),
+                              ),
+
+                              // Destination Location Card
+                              _buildLocationCard(
+                                title: "Destination",
+                                icon: Icons.location_on,
+                                iconColor: Colors.red,
+                                child: _buildDropdownButton(
+                                  hint: "Select destination location",
+                                  value: _selectedDestination,
+                                  onChanged: (BusStop? newValue) {
+                                    setState(() {
+                                      _selectedDestination = newValue;
+                                    });
+                                  },
+                                ),
+                              ),
+
+                              // Travel info section - made more compact
+                              if (_selectedSource != null && _selectedDestination != null)
+                                Container(
+                                  margin: EdgeInsets.only(top: 16),
+                                  padding: EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.9),
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.05),
+                                        blurRadius: 10,
+                                        spreadRadius: 1,
+                                        offset: Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(Icons.info_outline,
+                                              color: Colors.blue.shade700, size: 16),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            "Journey Info",
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Divider(height: 12),
+                                      Row(
+                                        mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text("From: ${_selectedSource!.name}",
+                                            style: TextStyle(
+                                              color: Colors.black87,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                          Icon(Icons.circle, size: 8,
+                                              color: Colors.green),
+                                        ],
+                                      ),
+                                      SizedBox(height: 4),
+                                      Row(
+                                        mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text("To: ${_selectedDestination!.name}",
+                                            style: TextStyle(
+                                              color: Colors.black87,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                          Icon(Icons.circle, size: 8,
+                                              color: Colors.red),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                )
+                            ],
+                          ),
+                        ),
                       ),
-                      SizedBox(height: 20),
-                      // Destination Dropdown
-                      _buildDropdownButton(
-                        hint: "Select Destination Location",
-                        value: _selectedDestination,
-                        onChanged: (BusStop? newValue) {
-                          setState(() {
-                            _selectedDestination = newValue;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 40),
-                ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
+
+          // Bottom Navigation Bar with glass effect
           Positioned(
-            bottom: 10,
-            left: 6,
-            right: 6,
-            child: Container(
-              padding: EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.3), // Semi-transparent background
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    blurRadius: 20, // Increased blur for a soft shadow effect
-                    offset: Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  SizedBox(width: 2),
-                  // Adjusted width for each button
-                  Flexible(
-                    child: _buildModernButton(
-                      label: "View Stops",
-                      icon: Icons.location_on,
-                      onPressed: _navigateToRouteScreen,
-                      gradient: LinearGradient(
-                        colors: [Colors.red.shade400, Colors.white38],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+            bottom: 16,
+            left: 16,
+            right: 16,
+            child: AnimatedOpacity(
+              opacity: _showBottomBar ? 1.0 : 0.0,
+              duration: Duration(milliseconds: 800),
+              curve: Curves.easeOut,
+              child: AnimatedContainer(
+                duration: Duration(milliseconds: 800),
+                curve: Curves.easeOut,
+                transform: Matrix4.translationValues(
+                    0,
+                    _showBottomBar ? 0 : 20,
+                    0
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.85),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 15,
+                            spreadRadius: 3,
+                            offset: Offset(0, 8),
+                          ),
+                        ],
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.5),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _buildNavigationButton(
+                            label: "View Stops",
+                            icon: Icons.pin_drop,
+                            onPressed: _navigateToRouteScreen,
+                            iconColor: Colors.blue.shade700,
+                          ),
+                          _buildNavigationButton(
+                            label: "Find Route",
+                            icon: Icons.directions_bus,
+                            onPressed: _findRoute,
+                            iconColor: Colors.orange.shade700,
+                            isPrimary: true,
+                          ),
+                          _buildNavigationButton(
+                            label: "Map",
+                            icon: Icons.map,
+                            onPressed: _showMapImage,
+                            iconColor: Colors.green.shade700,
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  SizedBox(width: 2), // Added space between buttons
-                  Flexible(
-                    child: _buildModernButton(
-                      label: "Find Route",
-                      icon: Icons.directions_bus,
-                      onPressed: _findRoute,
-                      gradient: LinearGradient(
-                        colors: [Colors.redAccent.shade100, Colors.redAccent.shade700],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 2), // Added space between buttons
-                  Flexible(
-                    child: _buildModernButton(
-                      label: "Map",
-                      icon: Icons.map,
-                      onPressed: _showMapImage,
-                      gradient: LinearGradient(
-                        colors: [Colors.red.shade100, Colors.white38],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 4),
-                ],
+                ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Location Card Widget
+  Widget _buildLocationCard({
+    required String title,
+    required IconData icon,
+    required Color iconColor,
+    required Widget child,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      margin: EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Card Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: iconColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: iconColor,
+                    size: 16,
+                  ),
+                ),
+                SizedBox(width: 8),
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: Colors.black87,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          Divider(thickness: 1, height: 1, color: Colors.grey.shade200),
+
+          // Dropdown
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+            child: child,
           ),
         ],
       ),
@@ -251,53 +590,105 @@ class _HomeScreenState extends State<HomeScreen> {
     BusStop? value,
     required void Function(BusStop?) onChanged,
   }) {
-    return DropdownButton<BusStop>(
-      hint: Text(
-        hint,
-        style: TextStyle(color: Colors.black),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade300),
+        color: Colors.grey.shade50,
       ),
-      dropdownColor: Colors.white,
-      value: value,
-      isExpanded: true,
-      icon: Icon(Icons.location_on, color: Colors.black),
-      style: TextStyle(color: Colors.black),
-      onChanged: onChanged,
-      items: busStops.map<DropdownMenuItem<BusStop>>((BusStop stop) {
-        return DropdownMenuItem<BusStop>(value: stop, child: Text(stop.name));
-      }).toList(),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      child: DropdownButton<BusStop>(
+        hint: Text(
+          hint,
+          style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+        ),
+        underline: SizedBox(),
+        dropdownColor: Colors.white,
+        value: value,
+        isExpanded: true,
+        icon: Container(
+          padding: EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Icon(Icons.keyboard_arrow_down,
+              color: Colors.grey.shade700, size: 16),
+        ),
+        style: TextStyle(
+          color: Colors.black87,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
+        onChanged: onChanged,
+        items: busStops.map<DropdownMenuItem<BusStop>>((BusStop stop) {
+          return DropdownMenuItem<BusStop>(
+            value: stop,
+            child: Text(
+              stop.name,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 13),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 
-  // Modern button with gradient, shadows, etc.
-  Widget _buildModernButton({
+  // Navigation Button Widget
+  Widget _buildNavigationButton({
     required String label,
     required IconData icon,
     required VoidCallback onPressed,
-    required LinearGradient gradient,
+    required Color iconColor,
+    bool isPrimary = false,
   }) {
-    return InkWell(
-      onTap: onPressed,
-      child: Container(
-        width: 100,
-        height: 60,
-        decoration: BoxDecoration(
-          gradient: gradient,
-          borderRadius: BorderRadius.circular(15.0),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 12,
-              offset: Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Center(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 80,
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: Colors.white),
-              SizedBox(height: 4),
-              Text(label, style: TextStyle(color: Colors.white)),
+              Container(
+                padding: EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isPrimary
+                      ? iconColor.withOpacity(0.15)
+                      : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                  border: isPrimary
+                      ? Border.all(color: iconColor.withOpacity(0.3), width: 1.5)
+                      : null,
+                  boxShadow: isPrimary
+                      ? [
+                    BoxShadow(
+                      color: iconColor.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: Offset(0, 3),
+                    )
+                  ]
+                      : null,
+                ),
+                child: Icon(
+                  icon,
+                  color: iconColor,
+                  size: 20,
+                ),
+              ),
+              SizedBox(height: 6),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isPrimary ? iconColor : Colors.black87,
+                  fontWeight: isPrimary ? FontWeight.bold : FontWeight.w500,
+                  fontSize: 12,
+                ),
+              ),
             ],
           ),
         ),
