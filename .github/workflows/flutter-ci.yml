@@ -10,6 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
+      - name: Clear GitHub Actions Cache
+        run: |
+          sudo rm -rf /opt/hostedtoolcache
+          
       - name: Checkout Code
         uses: actions/checkout@v3
 
@@ -32,7 +37,7 @@ jobs:
           ./dependency-check/bin/dependency-check.sh --project "FlutterApp" --scan . --format "ALL" --out dependency-check-report
 
       - name: Upload OWASP Report as Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: OWASP-Dependency-Check-Report
           path: dependency-check-report/
