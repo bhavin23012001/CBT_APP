@@ -643,7 +643,7 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
                           ),
                           _buildNavigationButton(
                             label: "My Routes",
-                            icon: Icons.star,
+                            icon: Icons.route,
                             onPressed: () {
                               _filterFavoriteRoutes(); // Filter based on selected stops
                               ScaffoldMessenger.of(context).showSnackBar(
