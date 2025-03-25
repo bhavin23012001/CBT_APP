@@ -19,6 +19,9 @@ jobs:
           flutter-version: 3.16.0  
           channel: stable
 
+      - name: Clean Project (Prevent Cache Issues)
+        run: flutter clean
+
       - name: Install Dependencies
         run: flutter pub get
 
@@ -29,7 +32,10 @@ jobs:
         run: flutter build apk --release
 
       - name: Extract App Version
-        run: echo "APP_VERSION=$(grep 'version:' pubspec.yaml | cut -d ' ' -f 2 | tr -d ' ')" >> $GITHUB_ENV
+        run: |
+          echo "Extracting app version from pubspec.yaml"
+          APP_VERSION=$(grep 'version:' pubspec.yaml | awk '{print $2}')
+          echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
 
       - name: Rename APK with Version
         run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/app-v${{ env.APP_VERSION }}.apk
@@ -45,7 +51,7 @@ jobs:
         run: aws --version
 
       - name: Debug APK Build
-        run: ls -R build/app/outputs/flutter-apk/
+        run: ls -l build/app/outputs/flutter-apk/
 
       - name: Upload APK to AWS S3
         env:
@@ -66,4 +72,4 @@ jobs:
           body: "🚀 New release available! [Download APK](https://${{ secrets.S3_BUCKET_NAME }}.s3.amazonaws.com/app-v${{ env.APP_VERSION }}.apk)"
           draft: false
           prerelease: false
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GH_PAT }}  # ✅ Use Personal Access Token
