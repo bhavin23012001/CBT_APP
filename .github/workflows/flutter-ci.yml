@@ -38,6 +38,10 @@ jobs:
       - name: Verify AWS CLI Installation
         run: aws --version
 
+      - name: Debug APK Build
+        run: ls -R build/app/outputs/flutter-apk/
+
+
       - name: Upload APK to AWS S3
         env:
           S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
