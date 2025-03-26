@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main  # Runs workflow on push to 'main' branch
-  workflow_dispatch:  # 🔥 Added manual trigger support
+  workflow_dispatch:  # Allows manual triggering
 
 jobs:
   build:
@@ -29,6 +29,9 @@ jobs:
 
       - name: Install .NET 6 (For OWASP Dependency Check)
         run: |
+          sudo apt-get update
+          wget https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+          sudo dpkg -i packages-microsoft-prod.deb
           sudo apt-get update
           sudo apt-get install -y dotnet-sdk-6.0
 
