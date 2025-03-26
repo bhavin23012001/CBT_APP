@@ -73,7 +73,7 @@ jobs:
           aws s3 cp build/app/outputs/flutter-apk/app-release.apk s3://$S3_BUCKET_NAME/app-release.apk --acl public-read
 
       - name: Print APK Download Link
-        run: echo "🚀 APK is available at:https://${{ secrets.S3_BUCKET_NAME }}.s3.amazonaws.com/app-release.apk"
+        run: echo "🚀 APK is available at:https://${{secrets.S3_BUCKET_NAME}}.s3.amazonaws.com/app-release.apk"
 
       - name: Create GitHub Release (Always Updates Latest)
         uses: ncipollo/release-action@v1
