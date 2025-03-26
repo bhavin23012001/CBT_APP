@@ -16,7 +16,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.16.0'  
+          flutter-version: 3.16.0  
           channel: stable
 
       - name: Clean Project (Prevent Cache Issues)
@@ -25,54 +25,62 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Extract App Version (Debugging Step 3)
+      - name: Install .NET 6 (Required for OWASP Dependency Check)
         run: |
-          echo "🔍 Extracting app version from pubspec.yaml..."
-          cat pubspec.yaml | grep "version:" || echo "❌ Version not found in pubspec.yaml"
-          APP_VERSION=$(grep 'version:' pubspec.yaml | awk '{print $2}')
-          echo "🛠 Extracted version: $APP_VERSION"
-          if [[ -z "$APP_VERSION" ]]; then
-            echo "❌ ERROR: App version could not be extracted!"
-            exit 1
-          fi
-          echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
+          sudo apt-get update
+          sudo apt-get install -y wget apt-transport-https software-properties-common
+          wget https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+          sudo dpkg -i packages-microsoft-prod.deb
+          sudo apt-get update
+          sudo apt-get install -y dotnet-sdk-6.0
 
-      - name: Delete Existing GitHub Release & Tag 
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}  
-        continue-on-error: true
+      - name: Run OWASP Dependency Check
         run: |
-          echo "Checking for existing release..."
-          if gh release view "v${{ env.APP_VERSION }}" >/dev/null 2>&1; then
-            echo "Deleting existing release..."
-            gh release delete "v${{ env.APP_VERSION }}" --yes
-          fi
+          curl -LO https://github.com/jeremylong/DependencyCheck/releases/download/v8.3.1/dependency-check-8.3.1-release.zip
+          unzip dependency-check-8.3.1-release.zip
+          mkdir -p dependency-check-report  # ✅ Ensure output directory exists
+          ./dependency-check/bin/dependency-check.sh --project "FlutterApp" --scan . --format "ALL" --out dependency-check-report/
 
-          echo "Checking for existing tag..."
-          if git rev-parse "v${{ env.APP_VERSION }}" >/dev/null 2>&1; then
-            echo "Deleting existing tag..."
-            git push --delete origin "v${{ env.APP_VERSION }}"
-            git tag -d "v${{ env.APP_VERSION }}"
-          fi
+      - name: Upload OWASP Report as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OWASP-Dependency-Check-Report
+          path: dependency-check-report/
+
+      - name: Run Tests
+        run: flutter test
 
       - name: Build APK
         run: flutter build apk --release
 
-      - name: Rename APK with Version
-        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/app-v${{ env.APP_VERSION }}.apk
+      - name: Debug APK Build (Ensure File Exists)
+        run: ls -l build/app/outputs/flutter-apk/
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Verify AWS CLI Installation
+        run: aws --version
 
       - name: Upload APK to AWS S3
         env:
           S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
         run: |
-          aws s3 cp build/app/outputs/flutter-apk/app-v${{ env.APP_VERSION }}.apk s3://$S3_BUCKET_NAME/app-v${{ env.APP_VERSION }}.apk --acl public-read
+          aws s3 cp build/app/outputs/flutter-apk/app-release.apk s3://$S3_BUCKET_NAME/app-release.apk --acl public-read
 
-      - name: Create GitHub Release (After Deleting Old One)
+      - name: Print APK Download Link
+        run: echo "🚀 APK is available at:https://${{ secrets.S3_BUCKET_NAME }}.s3.amazonaws.com/app-release.apk"
+
+      - name: Create GitHub Release (Always Updates Latest)
         uses: ncipollo/release-action@v1
         with:
-          tag: "v${{ env.APP_VERSION }}"
-          name: "Release v${{ env.APP_VERSION }}"
-          body: "🚀 New release available! [Download APK](https://${{ secrets.S3_BUCKET_NAME }}.s3.amazonaws.com/app-v${{ env.APP_VERSION }}.apk)"
+          tag: latest
+          name: "Latest Release"
+          body: "🚀 New release available! [Download APK](https://${{ secrets.S3_BUCKET_NAME }}.s3.amazonaws.com/app-release.apk)"
           draft: false
           prerelease: false
           token: ${{ secrets.GH_PAT }}
