@@ -11,10 +11,6 @@ jobs:
 
     steps:
 
-      - name: Clear GitHub Actions Cache
-        run: |
-          sudo rm -rf /opt/hostedtoolcache
-          
       - name: Checkout Code
         uses: actions/checkout@v3
 
@@ -30,11 +26,11 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Install .NET 6.0 (Required for OWASP Dependency Check)
+      - name: Install .NET 6 (Required for OWASP Dependency Check)
         run: |
           sudo apt-get update
           sudo apt-get install -y wget apt-transport-https software-properties-common
-          wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+          wget https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
           sudo dpkg -i packages-microsoft-prod.deb
           sudo apt-get update
           sudo apt-get install -y dotnet-sdk-6.0
@@ -43,10 +39,8 @@ jobs:
         run: |
           curl -LO https://github.com/jeremylong/DependencyCheck/releases/download/v8.3.1/dependency-check-8.3.1-release.zip
           unzip dependency-check-8.3.1-release.zip
-          mkdir -p dependency-check-report  # ✅ Ensure the output directory exists
+          mkdir -p dependency-check-report  
           ./dependency-check/bin/dependency-check.sh --project "FlutterApp" --scan . --format "ALL" --out dependency-check-report/
-
-
 
       - name: Upload OWASP Report as Artifact
         uses: actions/upload-artifact@v4
@@ -89,9 +83,13 @@ jobs:
           aws s3 cp build/app/outputs/flutter-apk/app-v${{ env.APP_VERSION }}.apk s3://$S3_BUCKET_NAME/app-v${{ env.APP_VERSION }}.apk --acl public-read
 
       - name: Print APK Download Link
-        env:
-          S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
         run: echo "🚀 APK is available at:https://${{ secrets.S3_BUCKET_NAME }}.s3.amazonaws.com/app-v${{ env.APP_VERSION }}.apk"
+
+      - name: Delete Existing Tag (If Exists)
+        continue-on-error: true
+        run: |
+          git tag -d v${{ env.APP_VERSION }} || true
+          git push --delete origin v${{ env.APP_VERSION }} || true
 
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
