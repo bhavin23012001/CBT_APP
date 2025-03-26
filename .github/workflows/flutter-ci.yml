@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main  # Runs workflow on push to 'main' branch
+  workflow_dispatch:  # 🔥 Added manual trigger support
 
 jobs:
   build:
