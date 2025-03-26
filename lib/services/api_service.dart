@@ -22,7 +22,7 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _fetchBusStops() async {
     try {
-      final response = await http.get(Uri.parse('http://localhost:3000/api/bus_stops'));
+      final response = await http.get(Uri.parse('http://54.236.128.72:3000'));
 
 
       if (response.statusCode == 200) {
