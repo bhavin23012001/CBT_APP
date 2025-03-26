@@ -32,15 +32,22 @@ jobs:
           APP_VERSION=$(grep 'version:' pubspec.yaml | awk '{print $2}')
           echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
 
-      - name: Delete Existing Tag (If Exists)
+      - name: **Delete Existing GitHub Release & Tag (If Exists)**
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}  # ✅ Use a GitHub Personal Access Token (PAT)
         continue-on-error: true
         run: |
+          echo "Checking for existing release..."
+          if gh release view "v${{ env.APP_VERSION }}" >/dev/null 2>&1; then
+            echo "Deleting existing release..."
+            gh release delete "v${{ env.APP_VERSION }}" --yes
+          fi
+
+          echo "Checking for existing tag..."
           if git rev-parse "v${{ env.APP_VERSION }}" >/dev/null 2>&1; then
-            echo "Deleting existing tag v${{ env.APP_VERSION }}..."
-            git tag -d v${{ env.APP_VERSION }}
-            git push origin --delete v${{ env.APP_VERSION }}
-          else
-            echo "Tag v${{ env.APP_VERSION }} does not exist. Proceeding with release."
+            echo "Deleting existing tag..."
+            git push --delete origin "v${{ env.APP_VERSION }}"
+            git tag -d "v${{ env.APP_VERSION }}"
           fi
 
       - name: Build APK
@@ -49,23 +56,13 @@ jobs:
       - name: Rename APK with Version
         run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/app-v${{ env.APP_VERSION }}.apk
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
       - name: Upload APK to AWS S3
         env:
           S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
         run: |
           aws s3 cp build/app/outputs/flutter-apk/app-v${{ env.APP_VERSION }}.apk s3://$S3_BUCKET_NAME/app-v${{ env.APP_VERSION }}.apk --acl public-read
 
-      - name: Print APK Download Link
-        run: echo "🚀 APK is available at:https://${{ secrets.S3_BUCKET_NAME }}.s3.amazonaws.com/app-v${{ env.APP_VERSION }}.apk"
-
-      - name: Create GitHub Release
+      - name: **Create GitHub Release (After Deleting Old One)**
         uses: ncipollo/release-action@v1
         with:
           tag: v${{ env.APP_VERSION }}
@@ -73,4 +70,4 @@ jobs:
           body: "🚀 New release available! [Download APK](https://${{ secrets.S3_BUCKET_NAME }}.s3.amazonaws.com/app-v${{ env.APP_VERSION }}.apk)"
           draft: false
           prerelease: false
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ secrets.GH_PAT }}  # ✅ Use a GitHub PAT
