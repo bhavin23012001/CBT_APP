@@ -10,7 +10,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout Code
         uses: actions/checkout@v3
 
@@ -26,10 +25,16 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Extract App Version
+      - name: Extract App Version (Debugging Step 3)
         run: |
-          echo "Extracting app version from pubspec.yaml"
+          echo "🔍 Extracting app version from pubspec.yaml..."
+          cat pubspec.yaml | grep "version:" || echo "❌ Version not found in pubspec.yaml"
           APP_VERSION=$(grep 'version:' pubspec.yaml | awk '{print $2}')
+          echo "🛠 Extracted version: $APP_VERSION"
+          if [[ -z "$APP_VERSION" ]]; then
+            echo "❌ ERROR: App version could not be extracted!"
+            exit 1
+          fi
           echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
 
       - name: Delete Existing GitHub Release & Tag 
