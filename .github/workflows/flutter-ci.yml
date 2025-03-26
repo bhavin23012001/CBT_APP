@@ -17,7 +17,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 3.16.0  
+          flutter-version: '3.16.0'  
           channel: stable
 
       - name: Clean Project (Prevent Cache Issues)
@@ -32,7 +32,7 @@ jobs:
           APP_VERSION=$(grep 'version:' pubspec.yaml | awk '{print $2}')
           echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
 
-      - name: **Delete Existing GitHub Release & Tag (If Exists)**
+      - name: Delete Existing GitHub Release & Tag 
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}  # ✅ Use a GitHub Personal Access Token (PAT)
         continue-on-error: true
@@ -65,9 +65,9 @@ jobs:
       - name: **Create GitHub Release (After Deleting Old One)**
         uses: ncipollo/release-action@v1
         with:
-          tag: v${{ env.APP_VERSION }}
-          name: Release v${{ env.APP_VERSION }}
+          tag: "v${{ env.APP_VERSION }}"
+          name: "Release v${{ env.APP_VERSION }}"
           body: "🚀 New release available! [Download APK](https://${{ secrets.S3_BUCKET_NAME }}.s3.amazonaws.com/app-v${{ env.APP_VERSION }}.apk)"
           draft: false
           prerelease: false
-          token: ${{ secrets.GH_PAT }}  # ✅ Use a GitHub PAT
+          token: ${{ secrets.GH_PAT }}
