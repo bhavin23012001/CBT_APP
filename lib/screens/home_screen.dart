@@ -27,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   BusStop? _selectedDestination;
   List<BusStop> busStops = [];
   bool _isLoading = true;
-  final String apiUrl = "https://cbt-backend-02ce.onrender.com/bus_stops";
+  final String apiUrl = "http://54.236.128.72:3000/bus_stops";
   late AnimationController _animationController;
   late Animation<double> _fadeInAnimation = AlwaysStoppedAnimation(0.0);
 
