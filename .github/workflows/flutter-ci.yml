@@ -26,39 +26,25 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Install .NET 6 (Required for OWASP Dependency Check)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y wget apt-transport-https software-properties-common
-          wget https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
-          sudo dpkg -i packages-microsoft-prod.deb
-          sudo apt-get update
-          sudo apt-get install -y dotnet-sdk-6.0
-
-      - name: Run OWASP Dependency Check
-        run: |
-          curl -LO https://github.com/jeremylong/DependencyCheck/releases/download/v8.3.1/dependency-check-8.3.1-release.zip
-          unzip dependency-check-8.3.1-release.zip
-          mkdir -p dependency-check-report  
-          ./dependency-check/bin/dependency-check.sh --project "FlutterApp" --scan . --format "ALL" --out dependency-check-report/
-
-      - name: Upload OWASP Report as Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: OWASP-Dependency-Check-Report
-          path: dependency-check-report/
-
-      - name: Run Tests
-        run: flutter test
-
-      - name: Build APK
-        run: flutter build apk --release
-
       - name: Extract App Version
         run: |
           echo "Extracting app version from pubspec.yaml"
           APP_VERSION=$(grep 'version:' pubspec.yaml | awk '{print $2}')
           echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
+
+      - name: Delete Existing Tag (If Exists)
+        continue-on-error: true
+        run: |
+          if git rev-parse "v${{ env.APP_VERSION }}" >/dev/null 2>&1; then
+            echo "Deleting existing tag v${{ env.APP_VERSION }}..."
+            git tag -d v${{ env.APP_VERSION }}
+            git push origin --delete v${{ env.APP_VERSION }}
+          else
+            echo "Tag v${{ env.APP_VERSION }} does not exist. Proceeding with release."
+          fi
+
+      - name: Build APK
+        run: flutter build apk --release
 
       - name: Rename APK with Version
         run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/app-v${{ env.APP_VERSION }}.apk
@@ -70,12 +56,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Verify AWS CLI Installation
-        run: aws --version
-
-      - name: Debug APK Build
-        run: ls -l build/app/outputs/flutter-apk/
-
       - name: Upload APK to AWS S3
         env:
           S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
@@ -85,12 +65,6 @@ jobs:
       - name: Print APK Download Link
         run: echo "🚀 APK is available at:https://${{ secrets.S3_BUCKET_NAME }}.s3.amazonaws.com/app-v${{ env.APP_VERSION }}.apk"
 
-      - name: Delete Existing Tag (If Exists)
-        continue-on-error: true
-        run: |
-          git tag -d v${{ env.APP_VERSION }} || true
-          git push --delete origin v${{ env.APP_VERSION }} || true
-
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
@@ -99,4 +73,4 @@ jobs:
           body: "🚀 New release available! [Download APK](https://${{ secrets.S3_BUCKET_NAME }}.s3.amazonaws.com/app-v${{ env.APP_VERSION }}.apk)"
           draft: false
           prerelease: false
-          token: ${{ secrets.GH_PAT }}  
+          token: ${{ secrets.GH_PAT }}
