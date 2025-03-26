@@ -66,7 +66,7 @@ class _TripsRoutesPageState extends State<TripsRoutesPage> with SingleTickerProv
 
   Future<void> fetchBusRoutes() async {
     try {
-      final response = await http.get(Uri.parse('https://cbt-backend-02ce.onrender.com/bus_routes'));
+      final response = await http.get(Uri.parse('http://54.236.128.72:3000/bus_routes'));
       if (response.statusCode == 200) {
         setState(() {
           busRoutes = json.decode(response.body);
