@@ -1,3 +1,4 @@
+### FRONTEND WORKFLOW (CBT_APP)
 name: Flutter CI/CD
 
 on:
@@ -19,20 +20,16 @@ jobs:
           flutter-version: 3.16.0  
           channel: stable
 
-      - name: Clean Project (Prevent Cache Issues)
+      - name: Clean Project
         run: flutter clean
 
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Install .NET 6 (Required for OWASP Dependency Check)
+      - name: Install .NET 6 (For OWASP Dependency Check)
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget apt-transport-https software-properties-common
-          wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
-          sudo dpkg -i packages-microsoft-prod.deb
-          sudo apt-get update
-          sudo apt-get install -y dotnet-sdk-6.0 || echo "⚠️ .NET 6 installation failed, skipping..."
+          sudo apt-get install -y dotnet-sdk-6.0
 
       - name: Run OWASP Dependency Check
         run: |
@@ -53,60 +50,16 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
 
-      - name: Debug APK Build (Ensure File Exists)
-        run: |
-          echo "🔍 Checking APK output directory..."
-          ls -l build/app/outputs/flutter-apk/
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: Verify AWS CLI Installation & Credentials
-        run: |
-          echo "🔍 Verifying AWS CLI installation..."
-          aws --version
-          echo "🔍 Checking AWS S3 Bucket Name..."
-          echo "Bucket: ${{ secrets.S3_BUCKET_NAME }}"
-
       - name: Upload APK to AWS S3
         env:
           S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
         run: |
-          echo "🚀 Uploading APK to S3..."
           aws s3 cp build/app/outputs/flutter-apk/app-release.apk s3://$S3_BUCKET_NAME/app-release.apk --acl public-read
-          echo "✅ Upload complete!"
 
-      - name: Print APK Download Link
-        run: echo "🚀 APK is available at:https://${{ secrets.S3_BUCKET_NAME }}.s3.amazonaws.com/app-release.apk"
-
-      - name: Delete Existing GitHub Release & Tag (If Exists)
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-        continue-on-error: true
-        run: |
-          echo "🔍 Checking for existing release..."
-          if gh release view "latest" >/dev/null 2>&1; then
-            echo "🗑️ Deleting existing release..."
-            gh release delete "latest" --yes
-          fi
-          
-          echo "🔍 Checking for existing tag..."
-          if git rev-parse "latest" >/dev/null 2>&1; then
-            echo "🗑️ Deleting existing tag..."
-            git push --delete origin "latest"
-            git tag -d "latest"
-          fi
-
-      - name: Create GitHub Release (Always Updates Latest)
+      - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
           tag: latest
           name: "Latest Release"
-          body: "🚀 New release available! [Download APK](https://${{ secrets.S3_BUCKET_NAME }}.s3.amazonaws.com/app-release.apk)"
-          draft: false
-          prerelease: false
+          body: "[Download APK](https://${{ secrets.S3_BUCKET_NAME }}.s3.amazonaws.com/app-release.apk)"
           token: ${{ secrets.GH_PAT }}
