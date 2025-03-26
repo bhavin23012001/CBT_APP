@@ -25,13 +25,10 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Install Required Dependencies (.NET 6 for OWASP)
+      - name: Install .NET 6 (Required for OWASP Dependency Check)
         run: |
-          echo "🔍 Updating package lists..."
           sudo apt-get update
           sudo apt-get install -y wget apt-transport-https software-properties-common
-          
-          echo "🔍 Installing .NET 6 SDK..."
           wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
           sudo dpkg -i packages-microsoft-prod.deb
           sudo apt-get update
@@ -84,7 +81,7 @@ jobs:
           echo "✅ Upload complete!"
 
       - name: Print APK Download Link
-        run: echo "🚀 APK is available at: https://${{ secrets.S3_BUCKET_NAME }}.s3.amazonaws.com/app-release.apk"
+        run: echo "🚀 APK is available at:https://${{ secrets.S3_BUCKET_NAME }}.s3.amazonaws.com/app-release.apk"
 
       - name: Delete Existing GitHub Release & Tag (If Exists)
         env:
