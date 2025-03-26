@@ -19,7 +19,7 @@ class _MapScreenState extends State<MapScreen> {
   late MapController _mapController;
   double _zoomLevel = 12.0;
   Future<List<dynamic>>? _busStopsFuture;
-  final String apiUrl = "http://10.0.2.2:3000/bus_stops";
+  final String apiUrl = "http://54.236.128.72:3000/bus_stops";
 
   // Temporary current location coordinates
   LatLng _currentLocation = LatLng(23.042570043027094, 72.56609809467304);
