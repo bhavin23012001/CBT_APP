@@ -26,6 +26,9 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
+      - name: Upgrade Dependencies
+        run: flutter pub upgrade
+
   security-scan:
     runs-on: ubuntu-latest
     needs: build
@@ -85,10 +88,22 @@ jobs:
       - name: Run Tests
         run: flutter test
 
-      - name: Upgrade Gradle Wrapper
+      - name: Debug File Paths
+        run: ls -R
+
+      - name: Check if Gradle Wrapper Exists
         run: |
-          chmod +x android/gradlew
-          ./android/gradlew wrapper --gradle-version 8.4 --distribution-type all
+          if [ ! -f android/gradlew ]; then
+            echo "Gradle wrapper missing, creating it..."
+            flutter pub get
+            flutter build apk --debug || true
+          fi
+
+      - name: Set Gradle Wrapper Executable
+        run: chmod +x android/gradlew
+
+      - name: Upgrade Gradle Wrapper
+        run: ./android/gradlew wrapper --gradle-version 8.4 --distribution-type all
 
       - name: Build APK
         run: flutter build apk --release
