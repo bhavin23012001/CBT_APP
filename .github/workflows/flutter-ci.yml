@@ -107,6 +107,11 @@ jobs:
         working-directory: android
         run: ./gradlew wrapper --gradle-version 8.4 --distribution-type all
 
+      - name: Upgrade Android Gradle Plugin
+        run: |
+          sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:7.3.1/' android/build.gradle
+          cat android/build.gradle | grep 'com.android.tools.build:gradle'
+
       - name: Build APK
         run: flutter build apk --release
 
