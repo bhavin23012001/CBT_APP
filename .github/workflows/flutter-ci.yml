@@ -10,22 +10,27 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: cirrusci/flutter:stable  # 🐳 Flutter Docker Image
+      image: ghcr.io/cirruslabs/flutter:latest  # ✅ Updated to Latest Flutter & Dart
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Check Flutter & Dart Versions
+        run: |
+          flutter --version
+          dart --version
 
       - name: Clean Project
         run: flutter clean
 
       - name: Install Dependencies
-        run: flutter pub get
+        run: flutter pub get  # ✅ Will now work with Dart 3.x
 
   security-scan:
     runs-on: ubuntu-latest
     needs: build
     container:
-      image: mcr.microsoft.com/dotnet/sdk:6.0  # 🛠 .NET 6 for OWASP Dependency Check
+      image: mcr.microsoft.com/dotnet/sdk:6.0  # ✅ .NET 6 for OWASP Dependency Check
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -46,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: security-scan
     container:
-      image: cirrusci/flutter:stable  # 🐳 Flutter Docker Image
+      image: ghcr.io/cirruslabs/flutter:latest  # ✅ Updated to Latest Flutter & Dart
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
