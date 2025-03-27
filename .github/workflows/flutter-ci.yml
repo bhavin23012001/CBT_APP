@@ -15,19 +15,19 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Check Flutter & Dart Versions
+      - name: Verify Flutter & Dart Versions
         run: |
-          flutter --version
-          dart --version
+          flutter --version || { echo "Flutter not installed correctly!"; exit 1; }
+          dart --version || { echo "Dart not installed correctly!"; exit 1; }
 
       - name: Clean Project
-        run: flutter clean
+        run: flutter clean || true
 
       - name: Install Dependencies
-        run: flutter pub get
+        run: flutter pub get || { echo "Failed to install dependencies!"; exit 1; }
 
       - name: Upgrade Dependencies
-        run: flutter pub upgrade
+        run: flutter pub upgrade || true
 
   security-scan:
     runs-on: ubuntu-latest
@@ -44,19 +44,20 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Set JAVA_HOME manually
-        run: echo "JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))" >> $GITHUB_ENV
+      - name: Install Dependencies for OWASP Check
+        run: sudo apt-get update && sudo apt-get install -y unzip
 
-      - name: Verify JAVA_HOME
-        run: echo $JAVA_HOME && ls -l $JAVA_HOME/bin
+      - name: Install OWASP Dependency-Check
+        run: |
+          curl -LO https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.2/dependency-check-8.4.2-release.zip
+          unzip -o dependency-check-8.4.2-release.zip -d dependency-check
+          chmod +x dependency-check/dependency-check/bin/dependency-check.sh
 
       - name: Run OWASP Dependency Check
         run: |
-          apt-get update && apt-get install -y unzip
-          curl -LO https://github.com/jeremylong/DependencyCheck/releases/download/v8.3.1/dependency-check-8.3.1-release.zip
-          unzip dependency-check-8.3.1-release.zip
           mkdir -p dependency-check-report
-          ./dependency-check/bin/dependency-check.sh --project "FlutterApp" --scan . --format "ALL" --out dependency-check-report/
+          dependency-check/dependency-check/bin/dependency-check.sh \
+            --project "FlutterApp" --scan . --format "ALL" --out dependency-check-report/
 
       - name: Upload OWASP Report as Artifact
         uses: actions/upload-artifact@v4
@@ -79,17 +80,8 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Set JAVA_HOME manually
-        run: echo "JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))" >> $GITHUB_ENV
-
-      - name: Verify JAVA_HOME
-        run: echo $JAVA_HOME && ls -l $JAVA_HOME/bin
-
       - name: Run Tests
-        run: flutter test
-
-      - name: Debug File Paths
-        run: ls -R
+        run: flutter test || { echo "Tests failed!"; exit 1; }
 
       - name: Ensure Gradle Wrapper Exists
         run: |
@@ -98,29 +90,29 @@ jobs:
             flutter pub get
             flutter build apk --debug || true
           fi
-
-      - name: Set Gradle Wrapper Executable
-        working-directory: android
-        run: chmod +x gradlew
+          chmod +x android/gradlew
 
       - name: Upgrade Gradle Wrapper
-        working-directory: android
-        run: ./gradlew wrapper --gradle-version 8.4 --distribution-type all
+        run: |
+          cd android
+          ./gradlew wrapper --gradle-version 8.4 --distribution-type all
 
       - name: Upgrade Android Gradle Plugin
         run: |
           sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:7.3.1/' android/build.gradle
-          cat android/build.gradle | grep 'com.android.tools.build:gradle'
+          if ! grep -q 'com.android.tools.build:gradle:7.3.1' android/build.gradle; then
+            echo "Failed to update Android Gradle Plugin!"; exit 1;
+          fi
 
       - name: Build APK
-        run: flutter build apk --release
+        run: flutter build apk --release || { echo "Flutter build failed!"; exit 1; }
 
       - name: Install AWS CLI
         run: |
           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
           unzip awscliv2.zip
           sudo ./aws/install
-          aws --version
+          aws --version || { echo "AWS CLI installation failed!"; exit 1; }
 
       - name: Upload APK to AWS S3
         env:
@@ -129,7 +121,9 @@ jobs:
           AWS_REGION: us-east-1
           S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
         run: |
-          aws s3 cp build/app/outputs/flutter-apk/app-release.apk s3://$S3_BUCKET_NAME/app-release.apk --acl public-read
+          aws s3 cp build/app/outputs/flutter-apk/app-release.apk s3://$S3_BUCKET_NAME/app-release.apk --acl public-read || {
+            echo "Failed to upload APK to S3!"; exit 1;
+          }
 
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
