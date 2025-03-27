@@ -1,16 +1,21 @@
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
+// Ensure the buildscript block appears before the plugins block
+buildscript {
+    val kotlin_version = "1.9.0"
+    
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath("com.android.tools.build:gradle:7.3.1") // Updated Gradle Plugin
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version")
+    }
+}
 
 plugins {
     id("com.android.application") version "7.3.1" apply false
-    id("com.android.library") version "7.3.1" apply false
     id("org.jetbrains.kotlin.android") version "1.9.0" apply false
-}
-
-buildscript {
-    dependencies {
-        classpath("com.android.tools.build:gradle:7.3.1")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0")
-    }
 }
 
 allprojects {
@@ -20,12 +25,14 @@ allprojects {
     }
 }
 
+// Set up project structure
+rootProject.buildDir = "../build"
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
+    evaluationDependsOn(":app")
 }
 
-rootProject.buildDir = "../build"
-
-tasks.register("clean", Delete::class) {
+// Define clean task
+tasks.register<Delete>("clean") {
     delete(rootProject.buildDir)
 }
