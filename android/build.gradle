@@ -1,6 +1,6 @@
 // Ensure the buildscript block appears before the plugins block
 buildscript {
-    val kotlin_version = "1.9.0"
+ext.kotlin_version = "1.9.0"
     
     repositories {
         google()
