@@ -91,7 +91,7 @@ jobs:
       - name: Debug File Paths
         run: ls -R
 
-      - name: Check if Gradle Wrapper Exists
+      - name: Ensure Gradle Wrapper Exists
         run: |
           if [ ! -f android/gradlew ]; then
             echo "Gradle wrapper missing, creating it..."
@@ -100,13 +100,22 @@ jobs:
           fi
 
       - name: Set Gradle Wrapper Executable
-        run: chmod +x android/gradlew
+        working-directory: android
+        run: chmod +x gradlew
 
       - name: Upgrade Gradle Wrapper
-        run: ./android/gradlew wrapper --gradle-version 8.4 --distribution-type all
+        working-directory: android
+        run: ./gradlew wrapper --gradle-version 8.4 --distribution-type all
 
       - name: Build APK
         run: flutter build apk --release
+
+      - name: Install AWS CLI
+        run: |
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install
+          aws --version
 
       - name: Upload APK to AWS S3
         env:
@@ -115,7 +124,6 @@ jobs:
           AWS_REGION: us-east-1
           S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
         run: |
-          apt-get update && apt-get install -y awscli
           aws s3 cp build/app/outputs/flutter-apk/app-release.apk s3://$S3_BUCKET_NAME/app-release.apk --acl public-read
 
       - name: Create GitHub Release
@@ -123,5 +131,5 @@ jobs:
         with:
           tag: latest
           name: "Latest Release"
-          body: "[Download APK](https://${{ secrets.S3_BUCKET_NAME }}.s3.amazonaws.com/app-release.apk)"
+          body: "[Download APK](https://s3.amazonaws.com/${{ secrets.S3_BUCKET_NAME }}/app-release.apk)"
           token: ${{ secrets.GH_PAT }}
