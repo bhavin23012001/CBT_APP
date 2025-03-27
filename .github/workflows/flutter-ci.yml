@@ -1,6 +1,3 @@
-## flutter-ci.yml
-
-### FRONTEND WORKFLOW (CBT_APP)
 name: Flutter CI/CD
 
 on:
@@ -12,15 +9,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      image: cirrusci/flutter:stable  # 🐳 Flutter Docker Image
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: 3.16.0
-          channel: stable
+        uses: actions/checkout@v4
 
       - name: Clean Project
         run: flutter clean
@@ -31,14 +24,12 @@ jobs:
   security-scan:
     runs-on: ubuntu-latest
     needs: build
+    container:
+      image: mcr.microsoft.com/dotnet/sdk:6.0  # 🛠 .NET 6 for OWASP Dependency Check
     steps:
-      - name: Install .NET 6 (For OWASP Dependency Check)
-        run: |
-          sudo apt-get update
-          wget https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
-          sudo dpkg -i packages-microsoft-prod.deb
-          sudo apt-get update
-          sudo apt-get install -y dotnet-sdk-6.0
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Run OWASP Dependency Check
         run: |
           curl -LO https://github.com/jeremylong/DependencyCheck/releases/download/v8.3.1/dependency-check-8.3.1-release.zip
@@ -54,11 +45,18 @@ jobs:
   test-build-upload:
     runs-on: ubuntu-latest
     needs: security-scan
+    container:
+      image: cirrusci/flutter:stable  # 🐳 Flutter Docker Image
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Run Tests
         run: flutter test
+
       - name: Build APK
         run: flutter build apk --release
+
       - name: Upload APK to AWS S3
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -66,7 +64,9 @@ jobs:
           AWS_REGION: us-east-1
           S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
         run: |
+          apt-get update && apt-get install -y awscli
           aws s3 cp build/app/outputs/flutter-apk/app-release.apk s3://$S3_BUCKET_NAME/app-release.apk --acl public-read
+
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
