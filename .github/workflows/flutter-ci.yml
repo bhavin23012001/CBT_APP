@@ -100,11 +100,13 @@ jobs:
       - name: Ensure Gradle Wrapper Exists
         run: |
           if [ ! -f android/gradlew ]; then
-            echo "Gradle wrapper missing, creating it..."
-            flutter pub get
-            flutter build apk --debug || true
+          echo "Gradle wrapper missing, creating it..."
+          cd android
+          gradle wrapper --gradle-version 7.5.1 --distribution-type all
+          cd ..
           fi
           chmod +x android/gradlew
+
 
       - name: Force Gradle Sync
         run: cd android && ./gradlew wrapper --gradle-version 7.5.1 --distribution-type all
