@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main  # Runs CI/CD when code is pushed to 'main' branch
+  workflow_dispatch:  # Enable manual triggering
 
 jobs:
   build:
