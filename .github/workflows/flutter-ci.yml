@@ -106,6 +106,9 @@ jobs:
           fi
           chmod +x android/gradlew
 
+      - name: Force Gradle Sync
+        run: cd android && ./gradlew wrapper --gradle-version 8.3 --distribution-type all
+
       - name: Build APK
         run: flutter build apk --release || { echo "Flutter build failed!"; exit 1; }
 
