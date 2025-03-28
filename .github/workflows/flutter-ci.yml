@@ -8,6 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -26,5 +27,8 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
 
-      - name: Deploy to Render
-        run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK }}
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: flutter-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
