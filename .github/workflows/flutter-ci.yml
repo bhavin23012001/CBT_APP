@@ -88,18 +88,8 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Java
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
       - name: Run Tests
         run: flutter test || { echo "Tests failed!"; exit 1; }
-
-      - name: Install Gradle
-        run: |
-          sudo apt update && sudo apt install -y gradle
 
       - name: Ensure Gradle Wrapper Exists
         run: |
