@@ -47,13 +47,11 @@ jobs:
 
       - name: Download OWASP Dependency-Check
         run: |
-          DOWNLOAD_URL=$(curl -Ls -o /dev/null -w %{url_effective} https://github.com/jeremylong/DependencyCheck/releases/latest/download/dependency-check.zip)
-          if [ -z "$DOWNLOAD_URL" ]; then
-            echo "Failed to retrieve Dependency-Check URL!" && exit 1
-          fi
+          DEP_CHECK_VERSION="8.4.0"  # Change this to the latest version when updating
+          DOWNLOAD_URL="https://github.com/jeremylong/DependencyCheck/releases/download/v${DEP_CHECK_VERSION}/dependency-check-${DEP_CHECK_VERSION}-release.zip"
 
           echo "Downloading OWASP Dependency-Check from: $DOWNLOAD_URL"
-          curl -L -o dependency-check.zip "$DOWNLOAD_URL" || wget -O dependency-check.zip "$DOWNLOAD_URL"
+          curl -L -o dependency-check.zip "$DOWNLOAD_URL"
 
           if [ ! -s dependency-check.zip ]; then
             echo "Downloaded file is empty or invalid. Exiting!"
@@ -68,7 +66,7 @@ jobs:
           fi
           chmod +x dependency-check/dependency-check/bin/dependency-check.sh
 
-      - name: Run OWASP Dependency Check with Retries
+      - name: Run OWASP Dependency Check
         run: |
           mkdir -p dependency-check-report
           dependency-check/dependency-check/bin/dependency-check.sh \
@@ -104,7 +102,7 @@ jobs:
           if [ ! -f android/gradlew ]; then
             echo "Gradle wrapper missing, creating it..."
             flutter pub get
-            flutter build apk --debug || true
+            cd android && ./gradlew wrapper
           fi
           chmod +x android/gradlew
 
@@ -139,7 +137,7 @@ jobs:
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          tag: latest
-          name: "Latest Release"
+          tag: v1.0.${{ github.run_number }}
+          name: "Release v1.0.${{ github.run_number }}"
           body: "[Download APK](https://${{ secrets.S3_BUCKET_NAME }}.s3.amazonaws.com/app-release.apk)"
           token: ${{ secrets.GH_PAT }}
