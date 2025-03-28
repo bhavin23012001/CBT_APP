@@ -105,6 +105,19 @@ jobs:
             echo "Failed to update Android Gradle Plugin!"; exit 1;
           fi
 
+      - name: Ensure Correct Android Gradle Plugin Version
+        run: |
+          sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:7.3.0/' android/build.gradle
+          sed -i 's/classpath("com.android.tools.build:gradle:[0-9.]*")/classpath("com.android.tools.build:gradle:7.3.0")/' android/build.gradle
+          grep "com.android.tools.build:gradle:7.3.0" android/build.gradle || { echo "Failed to enforce Gradle Plugin version!"; exit 1; }
+
+      - name: Clean Gradle Cache
+        run: |
+          cd android
+          ./gradlew --stop || true
+          ./gradlew clean || true
+
+
       - name: Build APK
         run: flutter build apk --release || { echo "Flutter build failed!"; exit 1; }
 
