@@ -43,12 +43,29 @@ jobs:
           java-version: '17'
 
       - name: Install Dependencies for OWASP Check
-        run: sudo apt-get update && sudo apt-get install -y unzip curl
+        run: sudo apt-get update && sudo apt-get install -y unzip curl wget
 
-      - name: Install Latest OWASP Dependency-Check
+      - name: Download OWASP Dependency-Check
         run: |
-          curl -LO https://github.com/jeremylong/DependencyCheck/releases/latest/download/dependency-check.zip
-          unzip -o dependency-check.zip -d dependency-check
+          DOWNLOAD_URL=$(curl -Ls -o /dev/null -w %{url_effective} https://github.com/jeremylong/DependencyCheck/releases/latest/download/dependency-check.zip)
+          if [ -z "$DOWNLOAD_URL" ]; then
+            echo "Failed to retrieve Dependency-Check URL!" && exit 1
+          fi
+
+          echo "Downloading OWASP Dependency-Check from: $DOWNLOAD_URL"
+          curl -L -o dependency-check.zip "$DOWNLOAD_URL" || wget -O dependency-check.zip "$DOWNLOAD_URL"
+
+          if [ ! -s dependency-check.zip ]; then
+            echo "Downloaded file is empty or invalid. Exiting!"
+            exit 1
+          fi
+
+      - name: Extract OWASP Dependency-Check
+        run: |
+          if ! unzip -o dependency-check.zip -d dependency-check; then
+            echo "Unzip failed! Invalid ZIP file or corrupted download."
+            exit 1
+          fi
           chmod +x dependency-check/dependency-check/bin/dependency-check.sh
 
       - name: Run OWASP Dependency Check with Retries
