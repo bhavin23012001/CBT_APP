@@ -111,11 +111,13 @@ jobs:
           sed -i 's/classpath("com.android.tools.build:gradle:[0-9.]*")/classpath("com.android.tools.build:gradle:7.3.0")/' android/build.gradle
           grep "com.android.tools.build:gradle:7.3.0" android/build.gradle || { echo "Failed to enforce Gradle Plugin version!"; exit 1; }
 
-      - name: Clean Gradle Cache
+      - name: Clear Gradle Cache and Rebuild
         run: |
+          rm -rf ~/.gradle/caches/
+          rm -rf ~/.gradle/wrapper/
           cd android
           ./gradlew --stop || true
-          ./gradlew clean || true
+          ./gradlew clean build --refresh-dependencies || true
 
 
       - name: Build APK
