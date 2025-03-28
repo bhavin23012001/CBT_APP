@@ -106,11 +106,6 @@ jobs:
           fi
           chmod +x android/gradlew
 
-      - name: Upgrade Gradle Wrapper
-        run: |
-          cd android
-          ./gradlew wrapper --gradle-version 8.4 --distribution-type all
-
       - name: Build APK
         run: flutter build apk --release || { echo "Flutter build failed!"; exit 1; }
 
