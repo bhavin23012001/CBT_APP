@@ -109,6 +109,9 @@ jobs:
       - name: Force Gradle Sync
         run: cd android && ./gradlew wrapper --gradle-version 8.3 --distribution-type all
 
+      - name: Install Dependencies
+        run: flutter pub get || { echo "Failed to install dependencies!"; exit 1; }
+
       - name: Build APK
         run: flutter build apk --release || { echo "Flutter build failed!"; exit 1; }
 
@@ -136,4 +139,4 @@ jobs:
           tag: latest
           name: "Latest Release"
           body: "[Download APK](https://${{ secrets.S3_BUCKET_NAME }}.s3.amazonaws.com/app-release.apk)"
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ secrets.GITHUB_TOKEN }}
