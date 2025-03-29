@@ -59,7 +59,7 @@ jobs:
       - name: Run k6 Performance Test
         run: |
           mkdir -p reports
-          k6 run performance-test.js --out json=reports/k6-performance-test-report.json || true
+          k6 run performance-test.js --out json=k6-performance-test-report.json || true
 
       - name: Upload Trivy Security Report to GitHub
         uses: actions/upload-artifact@v4
