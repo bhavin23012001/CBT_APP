@@ -57,7 +57,11 @@ jobs:
         
       - name: Run K6 Load Test
         run: |
-          k6 run tests/load_test.js --out json=k6-report.json || true
+          mkdir -p reports  # Ensure the directory exists
+          k6 run tests/load_test.js --out json=reports/k6-report.json || true
+
+      - name: Debug Files Before Upload
+        run: ls -lah reports build/app/outputs/flutter-apk || true
 
       - name: Upload Trivy Security Report to GitHub
         uses: actions/upload-artifact@v4
@@ -75,7 +79,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: k6-load-test-report
-          path: k6-report.json
+          path: reports/k6-report.json
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -98,4 +102,4 @@ jobs:
 
       - name: Upload K6 Load Test Report to S3
         run: |
-          aws s3 cp k6-report.json s3://bus-route-finder-apk/performance-reports/k6-report.json
+          aws s3 cp reports/k6-report.json s3://bus-route-finder-apk/performance-reports/k6-report.json
