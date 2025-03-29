@@ -7,9 +7,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  setup-flutter:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -30,11 +29,27 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Run Tests & Build APK in Parallel
-        run: |
-          flutter test &  
-          flutter build apk --release  
-          wait  
+  build-apk:
+    runs-on: ubuntu-latest
+    needs: setup-flutter
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.0'
+
+      - name: Build APK
+        run: flutter build apk --release
+
+  trivy-security-scan:
+    runs-on: ubuntu-latest
+    needs: build-apk
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
       - name: Security Scan with Trivy
         uses: aquasecurity/trivy-action@master
@@ -45,6 +60,19 @@ jobs:
           format: 'table'
           output: 'trivy-report.txt'
 
+      - name: Upload Trivy Security Report to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: trivy-report.txt
+
+  owasp-dependency-check:
+    runs-on: ubuntu-latest
+    needs: build-apk
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
       - name: OWASP Dependency Check
         uses: dependency-check/Dependency-Check_Action@main
         with:
@@ -52,26 +80,25 @@ jobs:
           format: "HTML"
           out: "dependency-check-report"
 
-      - name: Install K6 for Load Testing
-        run: |
-          sudo apt update
-          sudo apt install -y k6
-
-      - name: Run K6 Load Test
-        run: |
-          k6 run tests/load_test.js --out json=k6-report.json || true
-
-      - name: Upload Trivy Security Report to GitHub
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-report
-          path: trivy-report.txt
-
       - name: Upload OWASP Dependency Check Report to GitHub
         uses: actions/upload-artifact@v4
         with:
           name: dependency-check-report
           path: dependency-check-report
+
+  k6-load-test:
+    runs-on: ubuntu-latest
+    needs: build-apk
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Install K6 for Load Testing
+        run: sudo snap install k6
+
+      - name: Run K6 Load Test
+        run: |
+          k6 run tests/load_test.js --out json=k6-report.json || true
 
       - name: Upload K6 Load Test Report to GitHub
         uses: actions/upload-artifact@v4
@@ -79,6 +106,10 @@ jobs:
           name: k6-load-test-report
           path: k6-report.json
 
+  upload-artifacts:
+    runs-on: ubuntu-latest
+    needs: [trivy-security-scan, owasp-dependency-check, k6-load-test]
+    steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -88,7 +119,7 @@ jobs:
 
       - name: Upload APK to S3
         run: |
-          aws s3 cp build/app/outputs/flutter-apk/app-release.apk s3://bus-route-finder-apk/flutter-app/CBT.apk
+          aws s3 cp build/app/outputs/flutter-apk/app-release.apk s3://bus-route-finder-apk/flutter-app/app-release.apk
 
       - name: Upload Trivy Security Report to S3
         run: |
