@@ -53,10 +53,8 @@ jobs:
           out: "dependency-check-report"
 
       - name: Install K6 for Load Testing
-        run: |
-          sudo apt update
-          sudo apt install -y k6
-
+        run: sudo snap install k6
+        
       - name: Run K6 Load Test
         run: |
           k6 run tests/load_test.js --out json=k6-report.json || true
