@@ -7,7 +7,7 @@ export let options = {
 };
 
 export default function () {
-  let res = http.get('https://your-api-endpoint.com'); // Replace with your API URL
+  let res = http.get('http://152.59.32.216:3000'); // Replace with your API URL
   check(res, {
     'Status is 200': (r) => r.status === 200,
     'Response time < 500ms': (r) => r.timings.duration < 500,
