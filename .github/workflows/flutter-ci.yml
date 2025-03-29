@@ -59,8 +59,10 @@ jobs:
       - name: Run k6 Performance Test
         run: |
           mkdir -p reports
-          k6 run performance-test.js --out json=k6-performance-test-report.json || true
+          k6 run test/load_test.js --out json=reports/k6-performance-test-report.json || true
+          ls -lah reports/
 
+          
       - name: Upload Trivy Security Report to GitHub
         uses: actions/upload-artifact@v4
         with:
@@ -100,4 +102,4 @@ jobs:
 
       - name: Upload k6 Performance Test Report to S3
         run: |
-          aws s3 cp k6-performance-test-report.json s3://bus-route-finder-apk/performance-reports/k6-performance-test-report.json
+          aws s3 cp reports/k6-performance-test-report.json s3://bus-route-finder-apk/performance-reports/k6-performance-test-report.json
