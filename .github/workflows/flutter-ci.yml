@@ -36,11 +36,20 @@ jobs:
           flutter build apk --release  
           wait  
 
-      - name: Upload APK to GitHub
+      - name: Security Scan with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+          format: 'table'
+          output: 'trivy-report.txt'
+
+      - name: Upload Trivy Security Report to GitHub
         uses: actions/upload-artifact@v4
         with:
-          name: flutter-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: trivy-report
+          path: trivy-report.txt
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -52,3 +61,7 @@ jobs:
       - name: Upload APK to S3
         run: |
           aws s3 cp build/app/outputs/flutter-apk/app-release.apk s3://bus-route-finder-apk/flutter-app/app-release.apk
+
+      - name: Upload Trivy Security Report to S3
+        run: |
+          aws s3 cp trivy-report.txt s3://bus-route-finder-apk/security-reports/trivy-report.txt
