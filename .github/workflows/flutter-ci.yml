@@ -3,8 +3,8 @@ name: Flutter CI/CD
 on:
   push:
     branches:
-      - main  # Runs CI/CD when code is pushed to 'main' branch
-  workflow_dispatch:  # Enable manual triggering
+      - main
+  workflow_dispatch:
 
 jobs:
   build:
@@ -14,24 +14,29 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Remove Cached Flutter Installations
-        run: rm -rf $HOME/.flutter
+      - name: Cache Flutter Dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.pub-cache
+          key: flutter-${{ runner.os }}-${{ hashFiles('**/pubspec.yaml') }}
+          restore-keys: |
+            flutter-${{ runner.os }}-
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.16.0'  # Replace with the latest version
+          flutter-version: '3.16.0'
 
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Run Tests
-        run: flutter test
+      - name: Run Tests & Build APK in Parallel
+        run: |
+          flutter test &  
+          flutter build apk --release  
+          wait  
 
-      - name: Build APK
-        run: flutter build apk --release
-
-      - name: Upload APK Artifact to GitHub
+      - name: Upload APK to GitHub
         uses: actions/upload-artifact@v4
         with:
           name: flutter-apk
@@ -42,8 +47,8 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1  # Change this to your AWS region
+          aws-region: us-east-1
 
       - name: Upload APK to S3
         run: |
-          aws s3 cp build/app/outputs/flutter-apk/app-release.apk s3://bus-route-finder-apk /flutter-app/app-release.apk
+          aws s3 cp build/app/outputs/flutter-apk/app-release.apk s3://bus-route-finder-apk/flutter-app/app-release.apk
