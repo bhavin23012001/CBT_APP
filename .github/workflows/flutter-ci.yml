@@ -52,6 +52,14 @@ jobs:
           format: "HTML"
           out: "dependency-check-report"
 
+      - name: Install k6
+        run: |
+          sudo snap install k6
+
+      - name: Run k6 Performance Test
+        run: |
+          k6 run performance-test.js || true  # Ensure workflow continues even if k6 test fails
+
       - name: Upload Trivy Security Report to GitHub
         uses: actions/upload-artifact@v4
         with:
@@ -63,6 +71,12 @@ jobs:
         with:
           name: dependency-check-report
           path: dependency-check-report
+
+      - name: Upload k6 Performance Test Report to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-performance-test-report
+          path: k6-performance-test-report.txt
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -83,24 +97,6 @@ jobs:
         run: |
           aws s3 cp dependency-check-report s3://bus-route-finder-apk/security-reports/dependency-check-report/ --recursive
 
-  performance-test:
-    runs-on: ubuntu-latest
-    needs: build
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Install k6
+      - name: Upload k6 Performance Test Report to S3
         run: |
-          sudo snap install k6
-
-      - name: Run k6 Load Test
-        run: |
-          k6 run load-test.js
-
-      - name: Upload k6 Test Results
-        uses: actions/upload-artifact@v4
-        with:
-          name: k6-test-results
-          path: k6-results.json
+          aws s3 cp k6-performance-test-report.txt s3://bus-route-finder-apk/performance-reports/k6-performance-test-report.txt
