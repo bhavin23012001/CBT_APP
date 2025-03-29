@@ -7,14 +7,16 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  flutter-setup:
     runs-on: ubuntu-latest
-
+    outputs:
+      cache-hit: ${{ steps.cache.outputs.cache-hit }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
       - name: Cache Flutter Dependencies
+        id: cache
         uses: actions/cache@v3
         with:
           path: ~/.pub-cache
@@ -30,11 +32,27 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Run Tests & Build APK in Parallel
-        run: |
-          flutter test &  
-          flutter build apk --release  
-          wait  
+  build:
+    needs: flutter-setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+  trivy-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
       - name: Security Scan with Trivy
         uses: aquasecurity/trivy-action@master
@@ -45,6 +63,18 @@ jobs:
           format: 'table'
           output: 'trivy-report.txt'
 
+      - name: Upload Trivy Security Report to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: trivy-report.txt
+
+  owasp-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
       - name: OWASP Dependency Check
         uses: dependency-check/Dependency-Check_Action@main
         with:
@@ -52,17 +82,60 @@ jobs:
           format: "HTML"
           out: "dependency-check-report"
 
-      - name: Upload Trivy Security Report to GitHub
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-report
-          path: trivy-report.txt
-
       - name: Upload OWASP Dependency Check Report to GitHub
         uses: actions/upload-artifact@v4
         with:
           name: dependency-check-report
           path: dependency-check-report
+
+  k6-load-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Install K6 for Load Testing
+        run: |
+          sudo apt update
+          sudo apt install -y k6
+
+      - name: Run K6 Load Test
+        run: |
+          k6 run tests/load_test.js --out json=k6-report.json || true
+
+      - name: Upload K6 Load Test Report to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-load-test-report
+          path: k6-report.json
+
+  upload-to-s3:
+    needs: [build, trivy-scan, owasp-check, k6-load-test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: flutter-apk
+          path: build/app/outputs/flutter-apk/
+
+      - name: Download Security Reports
+        uses: actions/download-artifact@v4
+        with:
+          name: trivy-report
+          path: security-reports/
+
+      - name: Download OWASP Report
+        uses: actions/download-artifact@v4
+        with:
+          name: dependency-check-report
+          path: security-reports/dependency-check-report/
+
+      - name: Download K6 Report
+        uses: actions/download-artifact@v4
+        with:
+          name: k6-load-test-report
+          path: performance-reports/
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -75,10 +148,8 @@ jobs:
         run: |
           aws s3 cp build/app/outputs/flutter-apk/app-release.apk s3://bus-route-finder-apk/flutter-app/app-release.apk
 
-      - name: Upload Trivy Security Report to S3
+      - name: Upload Security Reports to S3
         run: |
-          aws s3 cp trivy-report.txt s3://bus-route-finder-apk/security-reports/trivy-report.txt
-
-      - name: Upload OWASP Dependency Check Report to S3
-        run: |
-          aws s3 cp dependency-check-report s3://bus-route-finder-apk/security-reports/dependency-check-report/ --recursive
+          aws s3 cp security-reports/trivy-report.txt s3://bus-route-finder-apk/security-reports/trivy-report.txt
+          aws s3 cp security-reports/dependency-check-report s3://bus-route-finder-apk/security-reports/dependency-check-report/ --recursive
+          aws s3 cp performance-reports/k6-report.json s3://bus-route-finder-apk/performance-reports/k6-report.json
