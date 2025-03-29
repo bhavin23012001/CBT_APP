@@ -30,19 +30,11 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Run Tests
-        run: flutter test
-
-      - name: Build APK
-        run: flutter build apk --release
-
-  security_scan:
-    runs-on: ubuntu-latest
-    needs: build
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - name: Run Tests & Build APK in Parallel
+        run: |
+          flutter test &  
+          flutter build apk --release  
+          wait  
 
       - name: Security Scan with Trivy
         uses: aquasecurity/trivy-action@master
@@ -60,40 +52,18 @@ jobs:
           format: "HTML"
           out: "dependency-check-report"
 
-      - name: Upload Security Reports to GitHub
+      - name: Upload Trivy Security Report to GitHub
         uses: actions/upload-artifact@v4
         with:
-          name: security-reports
-          path: |
-            trivy-report.txt
-            dependency-check-report
+          name: trivy-report
+          path: trivy-report.txt
 
-  load_test:
-    runs-on: ubuntu-latest
-    needs: build
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Install K6 for Load Testing
-        run: sudo snap install k6
-
-      - name: Run K6 Load Test
-        run: |
-          k6 run tests/load_test.js --out json=reports/k6-report.json || true
-
-      - name: Upload K6 Load Test Report to GitHub
+      - name: Upload OWASP Dependency Check Report to GitHub
         uses: actions/upload-artifact@v4
         with:
-          name: k6-load-test-report
-          path: reports/k6-report.json
+          name: dependency-check-report
+          path: dependency-check-report
 
-  upload_s3:
-    runs-on: ubuntu-latest
-    needs: [build, security_scan, load_test]
-
-    steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -105,11 +75,32 @@ jobs:
         run: |
           aws s3 cp build/app/outputs/flutter-apk/app-release.apk s3://bus-route-finder-apk/flutter-app/app-release.apk
 
-      - name: Upload Security Reports to S3
+      - name: Upload Trivy Security Report to S3
         run: |
           aws s3 cp trivy-report.txt s3://bus-route-finder-apk/security-reports/trivy-report.txt
+
+      - name: Upload OWASP Dependency Check Report to S3
+        run: |
           aws s3 cp dependency-check-report s3://bus-route-finder-apk/security-reports/dependency-check-report/ --recursive
 
-      - name: Upload K6 Load Test Report to S3
+  performance-test:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Install k6
         run: |
-          aws s3 cp reports/k6-report.json s3://bus-route-finder-apk/performance-reports/k6-report.json
+          sudo snap install k6
+
+      - name: Run k6 Load Test
+        run: |
+          k6 run load-test.js
+
+      - name: Upload k6 Test Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-test-results
+          path: k6-results.json
