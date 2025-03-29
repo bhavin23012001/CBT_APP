@@ -45,11 +45,24 @@ jobs:
           format: 'table'
           output: 'trivy-report.txt'
 
+      - name: OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: "FlutterApp"
+          format: "HTML"
+          out: "dependency-check-report"
+
       - name: Upload Trivy Security Report to GitHub
         uses: actions/upload-artifact@v4
         with:
           name: trivy-report
           path: trivy-report.txt
+
+      - name: Upload OWASP Dependency Check Report to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-check-report
+          path: dependency-check-report
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -65,3 +78,7 @@ jobs:
       - name: Upload Trivy Security Report to S3
         run: |
           aws s3 cp trivy-report.txt s3://bus-route-finder-apk/security-reports/trivy-report.txt
+
+      - name: Upload OWASP Dependency Check Report to S3
+        run: |
+          aws s3 cp dependency-check-report s3://bus-route-finder-apk/security-reports/dependency-check-report/ --recursive
