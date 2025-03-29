@@ -58,7 +58,7 @@ jobs:
 
       - name: Run k6 Performance Test
         run: |
-          k6 run performance-test.js || true  # Ensure workflow continues even if k6 test fails
+          k6 run performance-test.js --out json=k6-performance-test-report.json || true
 
       - name: Upload Trivy Security Report to GitHub
         uses: actions/upload-artifact@v4
@@ -76,7 +76,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: k6-performance-test-report
-          path: k6-performance-test-report.txt
+          path: k6-performance-test-report.json
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -99,4 +99,4 @@ jobs:
 
       - name: Upload k6 Performance Test Report to S3
         run: |
-          aws s3 cp k6-performance-test-report.txt s3://bus-route-finder-apk/performance-reports/k6-performance-test-report.txt
+          aws s3 cp k6-performance-test-report.json s3://bus-route-finder-apk/performance-reports/k6-performance-test-report.json
