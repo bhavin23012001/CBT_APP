@@ -14,12 +14,12 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Pull Latest Flutter Docker Image
-        run: docker pull ghcr.io/flutter/flutter:latest
+      - name: Pull Flutter Docker Image
+        run: docker pull cirrusci/flutter:latest
 
       - name: Run Flutter Build & Tests in Docker
         run: |
-          docker run --rm -v ${{ github.workspace }}:/app -w /app ghcr.io/flutter/flutter:latest bash -c "
+          docker run --rm -v ${{ github.workspace }}:/app -w /app cirrusci/flutter:latest bash -c "
           flutter pub get &&
           flutter test &&
           flutter build apk --release"
@@ -31,7 +31,7 @@ jobs:
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
           format: 'table'
-          output: trivy-report.txt   # ✅ FIXED (removed extra quote)
+          output: trivy-report.txt
 
       - name: OWASP Dependency Check
         uses: dependency-check/Dependency-Check_Action@main
