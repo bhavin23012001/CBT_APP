@@ -14,12 +14,13 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Pull Flutter Docker Image
-        run: docker pull cirrusci/flutter:latest
+      - name: Pull Latest Flutter Docker Image
+        run: docker pull ghcr.io/cirruslabs/flutter:latest
 
       - name: Run Flutter Build & Tests in Docker
         run: |
-          docker run --rm -v ${{ github.workspace }}:/app -w /app cirrusci/flutter:latest bash -c "
+          docker run --rm -v ${{ github.workspace }}:/app -w /app ghcr.io/cirruslabs/flutter:latest bash -c "
+          flutter --version &&
           flutter pub get &&
           flutter test &&
           flutter build apk --release"
