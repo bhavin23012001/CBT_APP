@@ -14,16 +14,27 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Pull Latest Flutter Docker Image
-        run: docker pull ghcr.io/cirruslabs/flutter:latest
+      - name: Cache Flutter Dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.pub-cache
+          key: flutter-${{ runner.os }}-${{ hashFiles('**/pubspec.yaml') }}
+          restore-keys: |
+            flutter-${{ runner.os }}-
 
-      - name: Run Flutter Build & Tests in Docker
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.0'
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Run Tests & Build APK in Parallel
         run: |
-          docker run --rm -v ${{ github.workspace }}:/app -w /app ghcr.io/cirruslabs/flutter:latest bash -c "
-          flutter --version &&
-          flutter pub get &&
-          flutter test &&
-          flutter build apk --release"
+          flutter test &  
+          flutter build apk --release  
+          wait  
 
       - name: Security Scan with Trivy
         uses: aquasecurity/trivy-action@master
@@ -32,7 +43,7 @@ jobs:
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
           format: 'table'
-          output: trivy-report.txt
+          output: 'trivy-report.txt'
 
       - name: OWASP Dependency Check
         uses: dependency-check/Dependency-Check_Action@main
@@ -42,21 +53,33 @@ jobs:
           out: "dependency-check-report"
 
       - name: Install k6
-        run: sudo snap install k6
+        run: |
+          sudo snap install k6
 
       - name: Run k6 Performance Test
         run: |
           mkdir -p reports
           k6 run test/load_test.js --out json=reports/k6-performance-test-report.json || true
+          ls -lah reports/
 
-      - name: Upload Reports to GitHub
+          
+      - name: Upload Trivy Security Report to GitHub
         uses: actions/upload-artifact@v4
         with:
-          name: security-and-performance-reports
-          path: |
-            trivy-report.txt
-            dependency-check-report
-            reports/k6-performance-test-report.json
+          name: trivy-report
+          path: trivy-report.txt
+
+      - name: Upload OWASP Dependency Check Report to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-check-report
+          path: dependency-check-report
+
+      - name: Upload k6 Performance Test Report to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-performance-test-report
+          path: reports/k6-performance-test-report.json
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -65,9 +88,18 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Upload APK and Reports to S3
+      - name: Upload APK to S3
         run: |
           aws s3 cp build/app/outputs/flutter-apk/app-release.apk s3://bus-route-finder-apk/flutter-app/app-release.apk
+
+      - name: Upload Trivy Security Report to S3
+        run: |
           aws s3 cp trivy-report.txt s3://bus-route-finder-apk/security-reports/trivy-report.txt
+
+      - name: Upload OWASP Dependency Check Report to S3
+        run: |
           aws s3 cp dependency-check-report s3://bus-route-finder-apk/security-reports/dependency-check-report/ --recursive
+
+      - name: Upload k6 Performance Test Report to S3
+        run: |
           aws s3 cp reports/k6-performance-test-report.json s3://bus-route-finder-apk/performance-reports/k6-performance-test-report.json
