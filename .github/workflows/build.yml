@@ -1,22 +1,55 @@
-name: Build
+name: Build & Analyze
+
 on:
   push:
     branches:
       - main
   pull_request:
     types: [opened, synchronize, reopened]
+
 jobs:
-  sonarqube:
-    name: SonarQube
-    runs-on: windows-latest
+  analyze:
+    runs-on: ubuntu-latest
+
     steps:
+      # Checkout repo
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      # The analysis requires to retrieve dependencies and build successfully
-      - name: Build
-        run: flutter run
-      - name: SonarQube Scan
+          fetch-depth: 0
+
+      # Setup Flutter for frontend
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0' # match your local flutter version
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Run Flutter analyzer
+        run: flutter analyze
+
+      # (Optional) Run Flutter tests if you have them
+      - name: Run Flutter tests
+        run: flutter test || true
+
+      # Build Flutter web (ensures project compiles)
+      - name: Build Flutter Web
+        run: flutter build web
+
+      # Setup backend (example: .NET Core)
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '6.0.x'  # match your backend version
+
+      - name: Restore backend dependencies
+        run: dotnet restore ./backend
+
+      - name: Build backend
+        run: dotnet build ./backend --no-restore --configuration Release
+
+      # Run SonarCloud Scan
+      - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
