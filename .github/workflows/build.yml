@@ -1,35 +1,39 @@
-name: Code Quality
+name: SonarCloud Analysis
 on:
   push:
-    branches: [main]
-    paths: ['lib/**', 'backend/**', 'sonar-project.properties']
+    branches:
+      - main
   pull_request:
-    paths: ['lib/**', 'backend/**', 'sonar-project.properties']
+    types: [opened, synchronize, reopened]
+    paths:  # Only run when actual code changes
+      - 'lib/**'
+      - 'backend/**'
+      - 'test/**'
+      - 'sonar-project.properties'
+      - 'pubspec.yaml'
 
 jobs:
-  scan:
+  sonarcloud:
+    name: Code Quality
     runs-on: ubuntu-latest
-    timeout-minutes: 3
-    if: |
-      !contains(github.event.head_commit.message, '[skip ci]') &&
-      !contains(github.event.head_commit.message, '[skip sonar]')
+    timeout-minutes: 5  # Fail fast if hanging
     steps:
+      # Shallow clone (faster checkout)
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1  # Minimal for PRs
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0  # SonarCloud needs full history for blame info
           
-      - if: github.event_name == 'push'
-        run: git fetch --unshallow  # Full history only for main branch
-        
-      - uses: SonarSource/sonarcloud-github-action@master
+      # Skip cache if not needed - cache lookup can take 10-20s
+      # Only use if your project is large (>1000 files)
+      # - name: Cache SonarCloud packages
+      #   uses: actions/cache@v3
+      #   with:
+      #     path: ~/.sonar/cache
+      #     key: ${{ runner.os }}-sonar
+
+      # Run SonarCloud (minimal configuration)
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: |
-            -Dsonar.scm.revision=${{ github.event.pull_request.head.sha || github.sha }}
-            -Dsonar.pullrequest.key=${{ github.event.number }}
-            -Dsonar.pullrequest.branch=${{ github.head_ref }}
-            -Dsonar.pullrequest.base=${{ github.base_ref }}
-            -Dsonar.qualitygate.wait=false
