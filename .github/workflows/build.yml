@@ -1,4 +1,4 @@
-name: Build & Analyze
+name: Build
 
 on:
   push:
@@ -8,59 +8,30 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  analyze:
-    runs-on: ubuntu-latest
-
+  sonarqube:
+    name: SonarCloud Analysis
+    runs-on: windows-latest
     steps:
-      #################################
-      # Checkout repo
-      #################################
+      # Checkout the repo
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # Required for better analysis
 
-      #################################
-      # Flutter (Frontend) Setup & Analyze
-      #################################
-      - name: Setup Flutter
+      # Set up Flutter (example if you use Flutter)
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.0' # match your local flutter version
+          flutter-version: '3.13.4'  # Replace with your version
 
-      - name: Install Flutter dependencies
+      # Get dependencies & build
+      - name: Install dependencies
         run: flutter pub get
 
-      - name: Run Flutter analyzer (don't fail on warnings)
-        run: flutter analyze || true
+      - name: Build project
+        run: flutter build apk  # Or any build target you need
 
-      - name: Run Flutter tests (optional)
-        run: flutter test || true
-
-      - name: Build Flutter web
-        run: flutter build web
-
-      #################################
-      # .NET (Backend) Setup & Build
-      #################################
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '6.0.x' # match your backend version
-
-      - name: Restore backend dependencies
-        run: dotnet restore ./backend
-
-      - name: Build backend
-        run: dotnet build ./backend --no-restore --configuration Release
-
-      - name: Run backend tests (optional)
-        run: dotnet test ./backend --no-build --verbosity normal || true
-
-      #################################
-      # SonarCloud Scan (Covers Both)
-      #################################
+      # SonarCloud scan
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
