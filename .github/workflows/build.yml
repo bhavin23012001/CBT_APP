@@ -17,8 +17,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Setup Flutter for frontend
-      - uses: subosito/flutter-action@v2
+      #################################
+      # Flutter (Frontend) Setup & Analyze
+      #################################
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.19.0' # match your local flutter version
 
@@ -28,19 +31,19 @@ jobs:
       - name: Run Flutter analyzer
         run: flutter analyze
 
-      # (Optional) Run Flutter tests if you have them
-      - name: Run Flutter tests
+      - name: Run Flutter tests (optional)
         run: flutter test || true
 
-      # Build Flutter web (ensures project compiles)
-      - name: Build Flutter Web
+      - name: Build Flutter web
         run: flutter build web
 
-      # Setup backend (example: .NET Core)
+      #################################
+      # .NET (Backend) Setup & Build
+      #################################
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '6.0.x'  # match your backend version
+          dotnet-version: '6.0.x' # match your backend version
 
       - name: Restore backend dependencies
         run: dotnet restore ./backend
@@ -48,8 +51,11 @@ jobs:
       - name: Build backend
         run: dotnet build ./backend --no-restore --configuration Release
 
-      # Run SonarCloud Scan
+      #################################
+      # SonarCloud Scan (Covers Both)
+      #################################
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
