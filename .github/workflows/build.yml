@@ -5,41 +5,35 @@ on:
       - main
   pull_request:
     types: [opened, synchronize, reopened]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - '.github/**'
+    paths:  # Only run when actual code changes
+      - 'lib/**'
+      - 'backend/**'
+      - 'test/**'
+      - 'sonar-project.properties'
+      - 'pubspec.yaml'
 
 jobs:
-  sonarcloud-only:
-    name: SonarCloud Code Quality Check
+  sonarcloud:
+    name: Code Quality
     runs-on: ubuntu-latest
+    timeout-minutes: 5  # Fail fast if hanging
     steps:
-      # Checkout with full git history for SonarCloud
+      # Shallow clone (faster checkout)
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # SonarCloud needs full history for blame info
+          
+      # Skip cache if not needed - cache lookup can take 10-20s
+      # Only use if your project is large (>1000 files)
+      # - name: Cache SonarCloud packages
+      #   uses: actions/cache@v3
+      #   with:
+      #     path: ~/.sonar/cache
+      #     key: ${{ runner.os }}-sonar
 
-      # Cache SonarCloud scanner (optional optimization)
-      - name: Cache SonarCloud packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
-
-      # Run SonarCloud scan (NO Flutter setup needed!)
+      # Run SonarCloud (minimal configuration)
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-  # Optional: Only include build if you actually need it for other purposes
-  # flutter-build:
-  #   name: Flutter Build & Test
-  #   runs-on: ubuntu-latest
-  #   needs: sonarcloud-only
-  #   if: success()
-  #   steps:
-  #     # ... Flutter build steps
