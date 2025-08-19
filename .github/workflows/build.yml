@@ -28,19 +28,18 @@ jobs:
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
 
-      # Run SonarCloud scan FIRST (no Flutter dependencies needed)
+      # Run SonarCloud scan FIRST (fastest, no dependencies needed)
       - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@v2
+        uses: SonarSource/sonarcloud-github-action@master  # Use the correct SonarCloud action
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          projectBaseDir: .
 
   flutter-build:
     name: Flutter Build & Test
     runs-on: ubuntu-latest
     needs: sonarcloud-analysis  # Only run if SonarCloud passes
+    if: success()  # Explicit success check
     steps:
       # Checkout (shallow clone is fine for build)
       - uses: actions/checkout@v4
