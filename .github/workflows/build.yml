@@ -34,16 +34,18 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-flutter-
 
-      # Get Flutter dependencies
+      # Install Flutter dependencies
       - name: Install dependencies
         run: flutter pub get
 
-      # Optional: Run build for local verification (can skip if only analysis is needed)
-      # - name: Build project (Optional)
-      #   run: flutter build apk --no-build-cache
+      # Optional: Pre-build to ensure analysis works (skip for only Sonar scan)
+      - name: Build project (Optional)
+        run: flutter build apk --no-build-cache
 
-      # Run SonarCloud scan
+      # SonarCloud scan
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          projectBaseDir: .  # Ensure scanner runs from repo root
