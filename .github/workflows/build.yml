@@ -18,7 +18,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Set up Flutter
+      # Set up Flutter (required for dependencies)
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -37,6 +37,18 @@ jobs:
       # Install Flutter dependencies
       - name: Install dependencies
         run: flutter pub get
+
+      # Verify SONAR_TOKEN is available
+      - name: Check SONAR_TOKEN
+        run: |
+          if [ -z "$SONAR_TOKEN" ]; then
+            echo "SONAR_TOKEN is missing!"
+            exit 1
+          fi
+          echo "SONAR_TOKEN is present."
+        shell: bash
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       # Run SonarCloud scan
       - name: SonarCloud Scan
