@@ -4,7 +4,7 @@ import 'package:mockito/mockito.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-import 'package:your_app/screens/home_screen.dart'; // Adjust import path
+import 'package:bus_route_finder/screens/home_screen.dart';
 
 class MockClient extends Mock implements http.Client {}
 
