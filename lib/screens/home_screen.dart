@@ -96,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       setState(() {
         _isLoading = false;
       });
-      _showErrorSnackbar("Could not load bus stops. Please check your connection.");
+      _showErrorSnackbar("Could not load bus stops. Please check your connection.Could not load bus stops. Please check your connection.Could not load bus stops. Please check your connection.Could not load bus stops. Please check your connection.Could not load bus stops. Please check your connection.Could not load bus stops. Please check your connection.Could not load bus stops. Please check your connection.Could not load bus stops. Please check your connection.Could not load bus stops. Please check your connection.Could not load bus stops. Please check your connection.Could not load bus stops. Please check your connection.Could not load bus stops. Please check your connection.Could not load bus stops. Please check your connection.Could not load bus stops. Please check your connection.Could not load bus stops. Please check your connection.Could not load bus stops. Please check your connection.Could not load bus stops. Please check your connection.Could not load bus stops. Please check your connection.Could not load bus stops. Please check your connection.Could not load bus stops. Please check your connection.Could not load bus stops. Please check your connection.Could not load bus stops. Please check your connection.");
     }
   }
 
