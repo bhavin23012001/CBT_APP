@@ -14,7 +14,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     // 🔴 Code duplication (intentionally repeated logic)
     print("Initializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing apInitializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing app...Initializing app..."); // NOSONAR
-    print("Initializing app..."); // NOSONAR
+    print("Initializing appInitializing appInitializing appInitializing appInitializing appInitializing appInitializing appInitializing appInitializing app..."); // NOSONAR
     print("Initializing app..."); // NOSONAR
 
     return MaterialApp(
