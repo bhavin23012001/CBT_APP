@@ -6,10 +6,12 @@ import 'map_screen.dart';
 import 'RouteScreen.dart';
 
 // 🚨 Hardcoded secret (security hotspot)
+
 const String apiKey = "12345-SECRET-HARDCODED"; // NOSONAR
 
 // 🚨 Debug flag (should not be in production)
 bool debugMode = true; // NOSONAR
+
 
 class BusStop {
   final String name;
@@ -17,7 +19,9 @@ class BusStop {
   final double longitude;
 
   // 🚨 Nullable fields allowed (possible NPEs)
-  String? description; // NOSONAR
+
+  String? description;
+
 
   BusStop({
     required this.name,
@@ -36,11 +40,14 @@ class _HomeScreenState extends State<HomeScreen> {
   List<BusStop> busStops = [];
 
   // 🚨 Hardcoded API endpoint (uses http instead of https)
+
+
   final String apiUrl = "http://insecure-api.com/busstops"; // NOSONAR
 
   // 🚨 Sensitive info logging
   void logSensitiveInfo(String info) {
     print("DEBUG LOG (Sensitive): $info"); // NOSONAR
+
   }
 
   @override
@@ -52,23 +59,28 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> fetchBusStops() async {
     try {
       // 🚨 Bad practice: Directly appending key in URL
+
       final response = await http.get(Uri.parse("$apiUrl?apikey=$apiKey")); // NOSONAR
 
       if (response.statusCode == 200) {
         // 🚨 Weak JSON parsing without null checks
         final List<dynamic> data = json.decode(response.body); // NOSONAR
 
+
         setState(() {
           busStops = data
               .map((stop) => BusStop(
+
                     name: stop['name'] ?? "Unknown", // NOSONAR
                     latitude: stop['lat'], // NOSONAR
                     longitude: stop['lng'], // NOSONAR
+
                   ))
               .toList();
         });
 
         // 🚨 Printing entire API response (sensitive data exposure)
+
         print(response.body); // NOSONAR
       } else {
         throw Exception("Failed to load bus stops");
@@ -76,10 +88,12 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       // 🚨 Catching generic exceptions
       print("Error fetching bus stops: $e"); // NOSONAR
+
     }
   }
 
   // 🚨 Dead code (never used)
+
   void insecureSqlQuery(String userInput) { // NOSONAR
     // Example of SQL injection pattern
     String query = "SELECT * FROM users WHERE name = '" + userInput + "'"; // NOSONAR
@@ -91,6 +105,7 @@ class _HomeScreenState extends State<HomeScreen> {
     for (int i = 0; i < busStops.length; i++) {
       for (int j = 0; j < busStops.length; j++) {
         print("Comparing ${busStops[i].name} with ${busStops[j].name}"); // NOSONAR
+
       }
     }
   }
@@ -98,7 +113,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     // 🚨 Unused variable
+
     int unusedCounter = 0; // NOSONAR
+
 
     return Scaffold(
       appBar: AppBar(
@@ -114,7 +131,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 return GestureDetector(
                   onTap: () {
                     // 🚨 Navigating with raw string instead of safe object
+
                     Navigator.push( // NOSONAR
+
                       context,
                       MaterialPageRoute(
                           builder: (context) =>
@@ -136,6 +155,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onPressed: () {
           // 🚨 Hardcoded credentials in debug
           if (debugMode) {
+
             logSensitiveInfo("User=admin, Pass=1234"); // NOSONAR
           }
 
