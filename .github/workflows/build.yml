@@ -1,11 +1,9 @@
 name: SonarCloud Analysis
+
 on:
-  push:
-    branches:
-      - main
   pull_request:
     types: [opened, synchronize, reopened]
-    paths:  # Only run when actual code changes
+    paths:
       - 'lib/**'
       - 'backend/**'
       - 'test/**'
@@ -16,24 +14,36 @@ jobs:
   sonarcloud:
     name: Code Quality
     runs-on: ubuntu-latest
-    timeout-minutes: 5  # Fail fast if hanging
+    timeout-minutes: 10
     steps:
-      # Shallow clone (faster checkout)
+      # Checkout full repo history (needed for SonarCloud blame info)
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # SonarCloud needs full history for blame info
-          
-      # Skip cache if not needed - cache lookup can take 10-20s
-      # Only use if your project is large (>1000 files)
-      # - name: Cache SonarCloud packages
-      #   uses: actions/cache@v3
-      #   with:
-      #     path: ~/.sonar/cache
-      #     key: ${{ runner.os }}-sonar
+          fetch-depth: 0
 
-      # Run SonarCloud (minimal configuration)
+      # Run SonarCloud analysis
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      # Wait for Quality Gate result
+      - name: SonarCloud Quality Gate
+        uses: SonarSource/sonarcloud-quality-gate-action@master
+        with:
+          projectKey: your_project_key_here
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      # Save SonarCloud report as artifact
+      - name: Save SonarCloud report
+        run: |
+          mkdir -p sonar-report
+          cp -r .scannerwork/* sonar-report/
+
+      - name: Upload SonarCloud report as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: sonarcloud-report
+          path: sonar-report/
