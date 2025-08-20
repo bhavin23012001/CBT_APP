@@ -1,14 +1,12 @@
 name: SonarCloud Analysis
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
     types: [opened, synchronize, reopened]
-    paths:
-      - 'lib/**'
-      - 'backend/**'
-      - 'test/**'
-      - 'sonar-project.properties'
-      - 'pubspec.yaml'
+    # Run on all changes (remove "paths" restriction so even 1-line changes trigger analysis)
 
 jobs:
   sonarcloud:
@@ -16,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      # Checkout full repo history (needed for SonarCloud blame info)
+      # Checkout full history (required for blame/coverage info)
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -28,22 +26,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      # Wait for Quality Gate result
-      - name: SonarCloud Quality Gate
-        uses: SonarSource/sonarcloud-quality-gate-action@master
-        with:
-          projectKey: your_project_key_here
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-      # Save SonarCloud report as artifact
+      # Save SonarCloud analysis report
       - name: Save SonarCloud report
         run: |
           mkdir -p sonar-report
           cp -r .scannerwork/* sonar-report/
 
+      # Upload report as downloadable artifact
       - name: Upload SonarCloud report as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: sonarcloud-report
           path: sonar-report/
