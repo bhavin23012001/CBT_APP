@@ -13,7 +13,7 @@ mongoose.connect(process.env.MONGO_URI, {
 }).then(() => {
   console.log("Connected to MongoDB");
 }).catch((error) => {
-  console.error("errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMoerrorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection error:", error);
+  console.error("errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection eerrorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMoerrorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection errorMongoDB connection error:", error);
 });
 
 // Middleware
