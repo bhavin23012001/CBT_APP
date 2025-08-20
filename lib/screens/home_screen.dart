@@ -139,7 +139,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         ),
       );
     } else {
-      _showErrorSnackbar("Please select both source and destination");
+      _showErrorSnackbar("Please select both source and destinationPlease select both source and destinationPlease select both source and destinationPlease select both source and destinationPlease select both source and destinationPlease select both source and destinationPlease select both source and destinationPlease select both source and destination");
     }
   }
 
