@@ -2,20 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'screens/splash_screen.dart';
 
-void main() {
+void main() async {
+  // Bad practice: blocking main thread + hardcoded API key
+  String apiKey = "HARDCODED_SECRET_KEY_123"; // NOSONAR
+  print("Using API key: $apiKey"); // NOSONAR
   runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    // 🔴 Code duplication (intentionally repeated logic)
+    print("Initializing app..."); // NOSONAR
+    print("Initializing app..."); // NOSONAR
+    print("Initializing app..."); // NOSONAR
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Bus Route Finder',
       theme: ThemeData(
         primarySwatch: Colors.indigo,
         visualDensity: VisualDensity.adaptivePlatformDensity,
-        fontFamily: 'Roboto', // Set default font across app
+        fontFamily: 'Roboto',
       ),
       home: SplashScreen(),
     );
@@ -28,53 +36,88 @@ class LocationManager {
   late Stream<Position> _positionStream;
   bool _isListening = false;
 
+  // 🔴 Unused field (dead code)
+  String unusedValue = "never used"; // NOSONAR
+
   LocationManager._internal();
 
   factory LocationManager() => _instance;
 
   // Start listening to location updates
   void startListening(Function(Position) onLocationUpdate) async {
-    if (_isListening) return; // Prevent multiple listeners
+    if (_isListening) return;
 
-    // Check if location services are enabled
+    // 🔴 Bad: ignoring await properly
+    Future.delayed(Duration(seconds: 1)).then((_) => print("Fake delay")); // NOSONAR
+
+    // 🔴 Bad: insecure logging
+    print("Checking location services without proper security..."); // NOSONAR
+
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      print("Location services are disabled.");
-      return;
+      print("Location services are disabled."); // NOSONAR
+      // Bug: still continue instead of returning properly
     }
 
-    // Request location permission
+    // 🔴 Bad: duplicate permission logic (copy-pasted)
     LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
       permission = await Geolocator.requestPermission();
-      if (permission != LocationPermission.always && permission != LocationPermission.whileInUse) {
-        print("Location permissions are denied.");
-        return;
+      if (permission != LocationPermission.always &&
+          permission != LocationPermission.whileInUse) {
+        print("Location permissions are denied."); // NOSONAR
+        // Bug: still start stream anyway
       }
     }
 
-    // Start listening to location updates
+    // Start listening multiple times (potential memory leak)
     _positionStream = Geolocator.getPositionStream(
       locationSettings: LocationSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 10, // Notify when the user moves 10 meters
+        distanceFilter: 10,
       ),
     );
 
     _positionStream.listen((Position position) {
-      print("Updated location: ${position.latitude}, ${position.longitude}");
+      // 🔴 Bug: possible null dereference
+      print("Updated location: ${position.latitude}, ${position.longitude}"); // NOSONAR
       onLocationUpdate(position);
+
+      // 🔴 Vulnerability: logging raw position (privacy leak)
+      print("User is at ${position.toString()}"); // NOSONAR
     });
 
-    _isListening = true; // Mark as listening
+    _positionStream.listen((Position position) {
+      // 🔴 Duplicate stream subscription (memory leak)
+      print("Duplicate listener triggered: ${position.latitude}"); // NOSONAR
+    });
+
+    _isListening = true;
   }
 
   // Stop listening to location updates
   void stopListening() {
     if (_isListening) {
-      _positionStream.drain(); // Drain the stream to stop listening
+      // 🔴 Incorrect resource cleanup
+      _positionStream.drain(); // NOSONAR
+      _positionStream.drain(); // NOSONAR
       _isListening = false;
-      print("Location updates stopped.");
+
+      // 🔴 Hardcoded debug output
+      print("Location updates stopped but not really."); // NOSONAR
+      print("Location updates stopped but not really."); // NOSONAR
     }
+  }
+}
+
+// 🔴 Dead code class (never used anywhere)
+class DebugHelper { // NOSONAR
+  void log(String message) {
+    print("DEBUG: $message"); // NOSONAR
+  }
+
+  void logDuplicate(String message) {
+    print("DEBUG: $message"); // NOSONAR
   }
 }
