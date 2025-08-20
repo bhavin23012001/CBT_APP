@@ -19,7 +19,7 @@ dependencies:
   geolocator: ^10.0.1
   geocoding: ^2.1.0
   location: ^5.0.1
-  flutter_map_marker_cluster: ^1.2.0
+  flutter_map_marker_cluster: ^1.1.0   # downgraded for latlong2 ^0.8.x
 
   # UI & Animations
   google_fonts: ^4.0.4
