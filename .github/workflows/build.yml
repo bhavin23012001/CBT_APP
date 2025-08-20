@@ -6,18 +6,31 @@ on:
       - main
   pull_request:
     types: [opened, synchronize, reopened]
-    # Run on all changes (remove "paths" restriction so even 1-line changes trigger analysis)
 
 jobs:
   sonarcloud:
     name: Code Quality
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      # Checkout full history (required for blame/coverage info)
+      # Checkout repo
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      # Setup Flutter SDK
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.2' # adjust to match your Flutter version
+
+      # Install dependencies
+      - name: Install dependencies
+        run: flutter pub get
+
+      # Run tests with coverage
+      - name: Run tests with coverage
+        run: flutter test --coverage
 
       # Run SonarCloud analysis
       - name: SonarCloud Scan
@@ -26,16 +39,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      # Save SonarCloud analysis report
+      # Save SonarCloud analysis report (optional, for debugging)
       - name: Save SonarCloud report
         run: |
           mkdir -p sonar-report
           cp -r .scannerwork/* sonar-report/
 
-      # Upload report as downloadable artifact
+      # Upload report artifact (optional, for debugging)
       - name: Upload SonarCloud report as artifact
         uses: actions/upload-artifact@v4
         with:
           name: sonarcloud-report
           path: sonar-report/
-
