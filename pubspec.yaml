@@ -12,24 +12,31 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.2
-  flutter_map: ^4.0.0  # OpenStreetMap-based map package
-  geolocator: ^10.0.1  # Compatible version for Flutter 3.x
-  geocoding: ^2.0.5  # Compatible for address retrieval
-  http: ^0.13.5  # Downgraded to work with google_fonts
-  google_fonts: ^4.0.4  # Updated version compatible with http ^0.13.x
-  provider: ^6.0.5  # Compatible version for Flutter 3.x
-  location: ^5.0.1  # Compatible version for location data
-  flutter_map_marker_cluster: ^1.0.1  # Compatible version
-  mongo_dart: ^0.10.0  # Compatible MongoDB Dart package
-  dotenv: ^4.2.0  # Compatible version for environment variables
-  latlong2: ^0.8.2  # Downgraded to match flutter_map requirements
+
+  # Map & Location
+  flutter_map: ^3.1.0       # Stable with latlong2
+  latlong2: ^0.8.1          # Compatible with flutter_map 3.x
+  geolocator: ^10.0.1
+  geocoding: ^2.1.0
+  location: ^5.0.1
+  flutter_map_marker_cluster: ^1.2.0  # Compatible with flutter_map 3.x
+
+  # UI & Animations
+  google_fonts: ^6.0.0
   animate_do: ^3.0.2
   lottie: ^2.6.0
+  provider: ^6.0.5
+
+  # Networking & Data
+  http: ^1.1.0
+  mongo_dart: ^0.10.1+1
+  dotenv: ^4.2.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^2.0.0
+  flutter_launcher_icons: ^0.13.1   # Added for app icons
 
 flutter:
   uses-material-design: true
@@ -49,4 +56,4 @@ flutter:
 flutter_icons:
   android: true
   ios: true
-  image_path: lib/assets/images/app_logo.png  # Ensure the logo file matches the one you want to use for your app icon
+  image_path: lib/assets/images/app_logo.png
