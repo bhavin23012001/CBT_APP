@@ -4,12 +4,12 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geolocator_platform_interface/geolocator_platform_interface.dart';
 import 'package:bus_route_finder/managers/location_manager.dart';
 
-// Custom mock extending GeolocatorPlatform instead of using implements
+// Custom mock extending GeolocatorPlatform to satisfy plugin_platform_interface requirements.
 class MockGeolocatorPlatform extends GeolocatorPlatform {
-  Function? _isLocationServiceEnabledHandler;
-  Function? _checkPermissionHandler;
-  Function? _requestPermissionHandler;
-  Function? _getPositionStreamHandler;
+  Future<bool> Function()? _isLocationServiceEnabledHandler;
+  Future<LocationPermission> Function()? _checkPermissionHandler;
+  Future<LocationPermission> Function()? _requestPermissionHandler;
+  Stream<Position> Function()? _getPositionStreamHandler;
 
   @override
   Future<bool> isLocationServiceEnabled() {
@@ -27,7 +27,7 @@ class MockGeolocatorPlatform extends GeolocatorPlatform {
   }
 
   @override
-  Stream<Position> getPositionStream({required LocationSettings locationSettings}) {
+  Stream<Position> getPositionStream({LocationSettings? locationSettings}) {
     return _getPositionStreamHandler?.call() ?? Stream<Position>.empty();
   }
 
@@ -73,7 +73,7 @@ void main() {
       called = true;
     });
 
-    await Future.delayed(Duration.zero); // Allow event loop
+    await Future.delayed(Duration.zero);
 
     expect(called, false);
   });
