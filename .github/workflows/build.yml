@@ -11,9 +11,9 @@ jobs:
   sonarcloud:
     name: Code Quality
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30  # Increased timeout if needed for coverage + build
     steps:
-      # Checkout repo
+      # Checkout repo with full history for SonarCloud
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -22,30 +22,34 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.2' # adjust to match your Flutter version
+          flutter-version: '3.22.2'  # match your Flutter version
 
       # Install Flutter/Dart dependencies
       - name: Install Flutter/Dart dependencies
         run: flutter pub get
 
-      # Run tests with coverage (Flutter/Dart)
+      # Build Flutter project (needed to generate code & full analysis)
+      - name: Build Flutter project
+        run: flutter build apk --debug
+
+      # Run Flutter/Dart tests with coverage
       - name: Run Flutter/Dart tests with coverage
         run: flutter test --coverage
 
-      # Setup Node.js (for backend)
+      # Setup Node.js for backend
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20 # Adjust as per your backend requirement
+          node-version: 20  # adjust to your backend Node version
 
       # Install backend dependencies
       - name: Install backend dependencies
         run: |
           cd backend
-          npm install
+          npm ci  # npm ci preferred for reproducible installs
           cd ..
 
-      # Run backend tests with coverage (Node.js using Jest)
+      # Run backend tests with coverage
       - name: Run backend tests with coverage
         run: |
           cd backend
@@ -59,13 +63,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      # Save SonarCloud analysis report (optional, for debugging)
+      # Save SonarCloud analysis report (for debugging diagnostics)
       - name: Save SonarCloud report
         run: |
           mkdir -p sonar-report
           cp -r .scannerwork/* sonar-report/
 
-      # Upload report artifact (optional, for debugging)
+      # Upload SonarCloud report as artifact (optional)
       - name: Upload SonarCloud report as artifact
         uses: actions/upload-artifact@v4
         with:
