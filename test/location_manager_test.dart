@@ -4,7 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geolocator_platform_interface/geolocator_platform_interface.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
-import 'package:CBT_APP/lib/managers/location_manager.dart';
+import 'package:CBT_APP/managers/location_manager.dart';
 
 // Generate mocks with: flutter pub run build_runner build
 class MockGeolocatorPlatform extends Mock implements GeolocatorPlatform {}
@@ -17,7 +17,7 @@ void main() {
 
   setUp(() {
     mockGeolocator = MockGeolocatorPlatform();
-    GeolocatorPlatform.instance = mockGeolocator;
+    GeolocatorPlatform.instance = mockGeolator;
     locationManager = LocationManager();
   });
 
@@ -62,7 +62,7 @@ void main() {
         .thenAnswer((_) async => LocationPermission.always);
 
     final controller = StreamController<Position>();
-    when(mockGeolocator.getPositionStream(
+    when(mockGeolator.getPositionStream(
       locationSettings: anyNamed('locationSettings'),
     )).thenAnswer((_) => controller.stream);
 
@@ -81,11 +81,11 @@ void main() {
       heading: 0,
       speed: 0,
       speedAccuracy: 0,
-      altitudeAccuracy: 0,
-      headingAccuracy: 0,
+      altitudeAccuracy: 0,   // Added
+      headingAccuracy: 0,    // Added
     );
-    controller.add(position);
 
+    controller.add(position);
     await Future.delayed(Duration.zero);
     expect(receivedPosition, position);
 
