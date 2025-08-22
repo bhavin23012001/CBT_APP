@@ -17,19 +17,19 @@ void main() {
 
   setUp(() {
     mockGeolocator = MockGeolocatorPlatform();
-    GeolocatorPlatform.instance = mockGeolator;
+    GeolocatorPlatform.instance = mockGeolocator; // Fixed typo here
     locationManager = LocationManager();
   });
 
   tearDown(() {
-    locationManager.stopListening();
+    locationManager.stopListening(); // No await because stopListening returns void
   });
 
   test('startListening returns early if location services disabled', () async {
     when(mockGeolocator.isLocationServiceEnabled())
         .thenAnswer((_) async => false);
     bool called = false;
-    await locationManager.startListening((position) {
+    locationManager.startListening((position) { // Removed await, method returns void
       called = true;
     });
     expect(called, false);
@@ -44,7 +44,7 @@ void main() {
     when(mockGeolocator.requestPermission())
         .thenAnswer((_) async => LocationPermission.denied);
     bool called = false;
-    await locationManager.startListening((position) {
+    locationManager.startListening((position) { // Removed await
       called = true;
     });
     expect(called, false);
@@ -62,12 +62,12 @@ void main() {
         .thenAnswer((_) async => LocationPermission.always);
 
     final controller = StreamController<Position>();
-    when(mockGeolator.getPositionStream(
+    when(mockGeolocator.getPositionStream(  // Fixed typo here
       locationSettings: anyNamed('locationSettings'),
     )).thenAnswer((_) => controller.stream);
 
     Position? receivedPosition;
-    await locationManager.startListening((position) {
+    locationManager.startListening((position) { // Removed await
       receivedPosition = position;
     });
 
@@ -81,15 +81,16 @@ void main() {
       heading: 0,
       speed: 0,
       speedAccuracy: 0,
-      altitudeAccuracy: 0,   // Added
-      headingAccuracy: 0,    // Added
+      altitudeAccuracy: 0,
+      headingAccuracy: 0,
     );
 
     controller.add(position);
     await Future.delayed(Duration.zero);
     expect(receivedPosition, position);
 
-    await locationManager.stopListening();
+    locationManager.stopListening(); // Removed await
+
     await controller.close();
   });
 }
