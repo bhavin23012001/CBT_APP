@@ -4,7 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geolocator_platform_interface/geolocator_platform_interface.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
-import 'package:CBT_APP/managers/location_manager.dart';
+import 'package:bus_route_finder/managers/location_manager.dart';
 
 // Generate mocks with: flutter pub run build_runner build
 class MockGeolocatorPlatform extends Mock implements GeolocatorPlatform {}
