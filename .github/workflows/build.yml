@@ -24,13 +24,33 @@ jobs:
         with:
           flutter-version: '3.22.2' # adjust to match your Flutter version
 
-      # Install dependencies
-      - name: Install dependencies
+      # Install Flutter/Dart dependencies
+      - name: Install Flutter/Dart dependencies
         run: flutter pub get
 
-      # Run tests with coverage
-      - name: Run tests with coverage
+      # Run tests with coverage (Flutter/Dart)
+      - name: Run Flutter/Dart tests with coverage
         run: flutter test --coverage
+
+      # Setup Node.js (for backend)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20 # Adjust as per your backend requirement
+
+      # Install backend dependencies
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          npm install
+          cd ..
+
+      # Run backend tests with coverage (Node.js using Jest)
+      - name: Run backend tests with coverage
+        run: |
+          cd backend
+          npm run test:coverage
+          cd ..
 
       # Run SonarCloud analysis
       - name: SonarCloud Scan
