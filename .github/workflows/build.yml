@@ -45,11 +45,11 @@ jobs:
           npm install
           cd ..
 
-      # Run backend tests with coverage (Node.js)
+      # Run backend tests with coverage (Node.js using Jest)
       - name: Run backend tests with coverage
         run: |
           cd backend
-          npm test -- --coverage
+          npm run test:coverage
           cd ..
 
       # Run SonarCloud analysis
