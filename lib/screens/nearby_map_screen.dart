@@ -34,7 +34,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
       permission = await Geolocator.requestPermission();
       if (permission != LocationPermission.always && permission != LocationPermission.whileInUse) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Location permissions are denied.'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Location permisions are denied.'), backgroundColor: Colors.red),
         );
         return;
       }
