@@ -307,7 +307,7 @@ jobs:
           
           echo "📊 COVERAGE ANALYSIS:"
           if [ -f "coverage/lcov.info" ]; then
-            local lines=$(wc -l < coverage/lcov.info)
+            lines=$(wc -l < coverage/lcov.info)
             if [ "$lines" -gt 0 ]; then
               echo "✅ Coverage report: $lines lines"
             else
