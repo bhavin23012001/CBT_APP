@@ -354,16 +354,15 @@ jobs:
           sonar.tests=test
           sonar.sourceEncoding=UTF-8
           
-          # Language settings - Dart/Flutter specific
-          sonar.dart.coverage.reportPaths=coverage/lcov.info
+          # CRITICAL: Correct Dart/Flutter coverage parameter
+          sonar.dart.lcov.reportPaths=coverage/lcov.info
           
-          # Coverage settings
+          # Coverage exclusions
           sonar.coverage.exclusions=**/*.g.dart,**/*.freezed.dart,**/*.gen.dart,**/*.mocks.dart,**/main.dart
           
-          # Exclusions
+          # Source exclusions
           sonar.exclusions=**/*.g.dart,**/*.freezed.dart,**/*.gen.dart,**/*.mocks.dart,**/build/**,**/.dart_tool/**,android/**,ios/**,web/**,linux/**,macos/**,windows/**,test/**
           sonar.test.exclusions=**/*_test.dart,test/**
-          sonar.coverage.exclusions=**/*.g.dart,**/*.freezed.dart,**/*.gen.dart,**/*.mocks.dart
           
           # Disable scanners for non-applicable languages  
           sonar.c.file.suffixes=-
@@ -378,7 +377,6 @@ jobs:
           
           # Additional settings for better Dart support
           sonar.scm.provider=git
-          sonar.analysis.mode=publish
           EOF
           
           echo "✅ SonarCloud configuration created"
@@ -433,6 +431,13 @@ jobs:
           - **Status:** ${{ steps.sonarcloud.outcome }}
           - **Quality Gate:** $([ "${{ steps.sonarcloud.outcome }}" == "success" ] && echo "✅ PASSED" || echo "⚠️ FAILED")
           - **Dashboard:** https://sonarcloud.io/dashboard?id=bhavin23012001_CBT_APP&branch=main
+          
+          ## Coverage Configuration Fix Applied
+          **CRITICAL FIX:** Changed from \`sonar.dart.coverage.reportPaths\` to \`sonar.dart.lcov.reportPaths\`
+          
+          According to official SonarCloud documentation:
+          - ✅ Using correct parameter: \`sonar.dart.lcov.reportPaths=coverage/lcov.info\`
+          - ✅ This should resolve the 0% coverage issue
           
           ## Coverage Report
           EOF
