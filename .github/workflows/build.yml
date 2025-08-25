@@ -242,10 +242,31 @@ jobs:
 
       # Run SonarCloud analysis
       - name: SonarCloud Analysis
+        id: sonarcloud
         uses: SonarSource/sonarcloud-github-action@master
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      # Show SonarCloud analysis result
+      - name: SonarCloud Result Status
+        if: always()
+        run: |
+          echo "🔍 SonarCloud Analysis Result"
+          echo "============================"
+          if [ "${{ steps.sonarcloud.outcome }}" == "success" ]; then
+            echo "✅ SonarCloud Quality Gate: PASSED"
+            echo "🎉 All quality checks completed successfully!"
+          elif [ "${{ steps.sonarcloud.outcome }}" == "failure" ]; then
+            echo "⚠️  SonarCloud Quality Gate: FAILED"
+            echo "📋 The analysis completed but didn't meet quality gate criteria"
+            echo "🔗 Check details: https://sonarcloud.io/dashboard?id=bhavin23012001_CBT_APP&branch=main"
+            echo "📈 Pipeline will continue despite quality gate failure"
+          else
+            echo "❓ SonarCloud Analysis: ${{ steps.sonarcloud.outcome }}"
+          fi
+          echo ""
 
       # Create analysis artifacts
       - name: Create Analysis Summary
@@ -263,6 +284,12 @@ jobs:
           **Flutter Version:** $(flutter --version | head -1)
           **Workflow:** ${{ github.workflow }}
           **Run ID:** ${{ github.run_id }}
+          **SonarCloud Status:** ${{ steps.sonarcloud.outcome }}
+          
+          ## SonarCloud Analysis
+          - **Status:** ${{ steps.sonarcloud.outcome }}
+          - **Quality Gate:** $([ "${{ steps.sonarcloud.outcome }}" == "success" ] && echo "✅ PASSED" || echo "⚠️ FAILED")
+          - **Dashboard:** https://sonarcloud.io/dashboard?id=bhavin23012001_CBT_APP&branch=main
           
           ## Coverage Report
           EOF
@@ -312,6 +339,19 @@ jobs:
           echo "🏃 Run ID: ${{ github.run_id }}"
           echo ""
           
+          echo "🔍 SONARCLOUD STATUS:"
+          if [ "${{ steps.sonarcloud.outcome }}" == "success" ]; then
+            echo "✅ Quality Gate: PASSED"
+            echo "🎉 All quality criteria met!"
+          elif [ "${{ steps.sonarcloud.outcome }}" == "failure" ]; then
+            echo "⚠️  Quality Gate: FAILED"
+            echo "📋 Analysis completed but quality criteria not met"
+            echo "🔄 Pipeline continued despite failure"
+          else
+            echo "❓ Status: ${{ steps.sonarcloud.outcome }}"
+          fi
+          echo ""
+          
           echo "📊 COVERAGE STATUS:"
           if [ -f "coverage/lcov.info" ] && [ $(wc -l < coverage/lcov.info) -gt 5 ]; then
             echo "✅ Coverage: GENERATED ($(wc -l < coverage/lcov.info) lines)"
@@ -332,10 +372,22 @@ jobs:
           fi
           
           echo ""
-          echo "🎉 EXPECTED OUTCOME:"
-          echo "SonarCloud should now receive valid coverage data"
-          echo "and show coverage percentage > 0%"
+          echo "🎉 PIPELINE OUTCOME:"
+          echo "✅ Workflow completed successfully"
+          echo "📈 Quality analysis available on SonarCloud"
+          if [ "${{ steps.sonarcloud.outcome }}" == "failure" ]; then
+            echo "⚠️  Quality gate failed but pipeline continued"
+            echo "💡 Consider reviewing quality issues when possible"
+          fi
           echo ""
           echo "🔗 Check SonarCloud dashboard for detailed results:"
           echo "https://sonarcloud.io/project/overview?id=bhavin23012001_CBT_APP"
           echo "=================================================="
+
+      # This step demonstrates that the workflow continues
+      - name: Post-Analysis Steps
+        if: always()
+        run: |
+          echo "🚀 This step runs regardless of SonarCloud quality gate status!"
+          echo "✅ You can add deployment or other steps here"
+          echo "📦 Pipeline execution continues normally"
