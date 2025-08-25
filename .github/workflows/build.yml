@@ -1,339 +1,62 @@
-name: Build and Analysis Pipeline
+name: SonarCloud Analysis
 on:
   push:
     branches:
       - main
   pull_request:
     types: [opened, synchronize, reopened]
-
 jobs:
   sonarcloud:
-    name: Code Quality & Testing
+    name: Code Quality
     runs-on: ubuntu-latest
-    timeout-minutes: 25
-    
+    timeout-minutes: 15
     steps:
-      # Checkout repository
+      # Checkout repo
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       # Setup Flutter SDK
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.2'
-
-      # Setup Node.js for backend
+          flutter-version: '3.22.2' # adjust to match your Flutter version
+      # Install Flutter/Dart dependencies
+      - name: Install Flutter/Dart dependencies
+        run: flutter pub get
+      # Run tests with coverage (Flutter/Dart)
+      - name: Run Flutter/Dart tests with coverage
+        run: flutter test --coverage
+      # Setup Node.js (for backend)
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-
-      # Create build configuration for mockito inline
-      - name: Create Mock Build Configuration
-        run: |
-          cat > build.yaml << 'EOF'
-          targets:
-            $default:
-              builders:
-                mockito|mockBuilder:
-                  options:
-                    # Generate mocks for classes annotated with @GenerateMocks
-                  generate_for:
-                    - test/**_test.dart
-          EOF
-          echo "✅ build.yaml created for mockito configuration"
-
-      # Ensure required dependencies in pubspec.yaml
-      - name: Check and Update Dependencies
-        run: |
-          echo "📦 Checking pubspec.yaml dependencies..."
-          
-          # Check if required dev_dependencies exist
-          if ! grep -q "mockito:" pubspec.yaml; then
-            echo "⚠️  Adding missing mockito dependency"
-            # Add mockito if not present (basic approach)
-            echo "  mockito: ^5.4.4" >> pubspec.yaml
-          fi
-          
-          if ! grep -q "build_runner:" pubspec.yaml; then
-            echo "⚠️  Adding missing build_runner dependency"
-            echo "  build_runner: ^2.4.8" >> pubspec.yaml
-          fi
-          
-          echo "✅ Dependencies checked"
-
-      # Install Flutter dependencies
-      - name: Install Flutter Dependencies
-        run: |
-          echo "📥 Installing Flutter dependencies..."
-          flutter pub get
-          echo "✅ Flutter dependencies installed"
-
+          node-version: 20 # Adjust as per your backend requirement
       # Install backend dependencies
-      - name: Install Backend Dependencies
+      - name: Install backend dependencies
         run: |
-          if [ -d "backend" ] && [ -f "backend/package.json" ]; then
-            echo "📥 Installing backend dependencies..."
-            cd backend
-            npm install
-            cd ..
-            echo "✅ Backend dependencies installed"
-          else
-            echo "ℹ️  No backend found, skipping backend setup"
-          fi
-
-      # Generate mock classes
-      - name: Generate Mock Classes
+          cd backend
+          npm install
+          cd ..
+      # Run backend tests with coverage (Node.js using Jest)
+      - name: Run backend tests with coverage
         run: |
-          echo "🔧 Generating mock classes for tests..."
-          flutter packages pub run build_runner build --delete-conflicting-outputs || {
-            echo "⚠️  Mock generation failed, continuing without mocks"
-          }
-          echo "✅ Mock generation completed"
-
-      # Verify test structure
-      - name: Verify Test Structure
-        run: |
-          echo "🔍 Verifying test file structure..."
-          
-          if [ -d "test" ]; then
-            echo "✅ Test directory exists"
-            find test -name "*.dart" -type f | head -10
-            echo "Total test files: $(find test -name "*.dart" -type f | wc -l)"
-          else
-            echo "⚠️  No test directory found"
-            mkdir -p test
-          fi
-
-      # Run Flutter tests with coverage
-      - name: Run Flutter Tests with Coverage
-        continue-on-error: true
-        run: |
-          echo "🧪 Running Flutter tests with coverage..."
-          
-          # Create coverage directory
-          mkdir -p coverage
-          
-          # Run tests with coverage
-          if flutter test --coverage --reporter expanded; then
-            echo "✅ Flutter tests passed"
-          else
-            echo "⚠️  Some Flutter tests failed, but continuing"
-            # Create empty coverage file if tests fail
-            touch coverage/lcov.info
-          fi
-          
-          # Verify coverage file
-          if [ -f "coverage/lcov.info" ]; then
-            echo "✅ Coverage file generated ($(wc -l < coverage/lcov.info) lines)"
-          else
-            echo "⚠️  No coverage file, creating empty one"
-            touch coverage/lcov.info
-          fi
-
-      # Run individual test files for debugging
-      - name: Run Individual Test Files
-        continue-on-error: true
-        run: |
-          echo "🔍 Running individual test files..."
-          
-          # Find and run test files individually
-          for test_file in $(find test -name "*_test.dart" -type f | head -5); do
-            echo "Testing: $test_file"
-            flutter test "$test_file" --reporter compact || echo "❌ $test_file failed"
-          done
-
-      # Run backend tests with coverage
-      - name: Run Backend Tests with Coverage
-        continue-on-error: true
-        run: |
-          if [ -d "backend" ] && [ -f "backend/package.json" ]; then
-            echo "🧪 Running backend tests with coverage..."
-            cd backend
-            
-            # Check if test script exists
-            if npm run test:coverage 2>/dev/null; then
-              echo "✅ Backend tests completed"
-            else
-              echo "⚠️  Backend test script not found, trying alternatives"
-              npm test || echo "❌ Backend tests failed"
-              # Create empty coverage
-              mkdir -p coverage
-              touch coverage/lcov.info
-            fi
-            cd ..
-          else
-            echo "ℹ️  No backend tests to run"
-          fi
-
-      # Combine coverage reports
-      - name: Combine Coverage Reports
-        run: |
-          echo "📊 Processing coverage reports..."
-          
-          # Ensure main coverage directory exists
-          mkdir -p coverage
-          
-          # Start with Flutter coverage or create empty
-          if [ ! -f "coverage/lcov.info" ]; then
-            touch coverage/lcov.info
-          fi
-          
-          # Combine backend coverage if it exists
-          if [ -f "backend/coverage/lcov.info" ]; then
-            echo "Combining Flutter and backend coverage..."
-            echo "" >> coverage/lcov.info  # Add separator
-            cat backend/coverage/lcov.info >> coverage/lcov.info
-            echo "✅ Coverage reports combined"
-          fi
-          
-          echo "📈 Final coverage report: $(wc -l < coverage/lcov.info) lines"
-
-      # Generate test report in JSON format
-      - name: Generate Test Report
-        continue-on-error: true
-        run: |
-          echo "📄 Generating test report..."
-          
-          if flutter test --machine > test-results.json 2>/dev/null; then
-            echo "✅ Test report generated"
-          else
-            echo "⚠️  Test report generation failed, creating minimal report"
-            echo '{"tests":[],"success":false,"timestamp":"'$(date -Iseconds)'"}' > test-results.json
-          fi
-
-      # Create or verify sonar-project.properties
-      - name: Verify SonarCloud Configuration
-        run: |
-          echo "⚙️  Verifying SonarCloud configuration..."
-          
-          if [ ! -f "sonar-project.properties" ]; then
-            echo "📝 Creating sonar-project.properties..."
-            cat > sonar-project.properties << 'EOF'
-          # --- Required metadata ---
-          sonar.projectKey=bhavin23012001_CBT_APP
-          sonar.organization=bhavin23012001
-          sonar.projectName=CBT_APP
-          sonar.projectVersion=1.0
-          
-          # --- Source directories ---
-          sonar.sources=lib,backend,android,ios,web,linux,macos,windows
-          
-          # --- Test directories ---
-          sonar.tests=test,backend/test
-          
-          # --- Exclusions ---
-          sonar.exclusions=**/.dart_tool/**,**/build/**,**/*.g.dart,**/*.freezed.dart,**/*.gen.dart,**/node_modules/**,**/coverage/**,backend/test/**,**/*.mocks.dart
-          
-          # --- Encoding ---
-          sonar.sourceEncoding=UTF-8
-          
-          # --- Disable irrelevant scanners ---
-          sonar.c.file.suffixes=-
-          sonar.cpp.file.suffixes=-
-          sonar.objc.file.suffixes=-
-          
-          # --- Coverage reports ---
-          sonar.dart.coverage.reportPaths=coverage/lcov.info
-          sonar.javascript.lcov.reportPaths=backend/coverage/lcov.info
-          
-          # --- SonarCloud server ---
-          sonar.host.url=https://sonarcloud.io
-          sonar.qualitygate.wait=true
-          EOF
-            echo "✅ sonar-project.properties created"
-          else
-            echo "✅ sonar-project.properties already exists"
-          fi
-
+          cd backend
+          npm run test:coverage
+          cd ..
       # Run SonarCloud analysis
-      - name: SonarCloud Analysis
+      - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-      # Save analysis artifacts
-      - name: Save Analysis Artifacts
-        continue-on-error: true
+      # Save SonarCloud analysis report (optional, for debugging)
+      - name: Save SonarCloud report
         run: |
-          echo "💾 Saving analysis artifacts..."
-          
-          # Create artifact directory
-          mkdir -p analysis-artifacts
-          
-          # Copy SonarCloud results
-          if [ -d ".scannerwork" ]; then
-            cp -r .scannerwork analysis-artifacts/sonar-scanner-work 2>/dev/null || true
-          fi
-          
-          # Copy coverage files
-          if [ -f "coverage/lcov.info" ]; then
-            cp coverage/lcov.info analysis-artifacts/
-          fi
-          
-          # Copy test results
-          if [ -f "test-results.json" ]; then
-            cp test-results.json analysis-artifacts/
-          fi
-          
-          echo "✅ Artifacts saved"
-
-      # Upload artifacts
-      - name: Upload Analysis Artifacts
+          mkdir -p sonar-report
+          cp -r .scannerwork/* sonar-report/
+      # Upload report artifact (optional, for debugging)
+      - name: Upload SonarCloud report as artifact
         uses: actions/upload-artifact@v4
-        if: always()
         with:
-          name: code-analysis-results
-          path: |
-            analysis-artifacts/
-            coverage/lcov.info
-            test-results.json
-          retention-days: 30
-
-      # Display comprehensive summary
-      - name: Analysis Summary
-        if: always()
-        run: |
-          echo "=================================================="
-          echo "🎯 CODE ANALYSIS SUMMARY"
-          echo "=================================================="
-          echo "📅 Date: $(date)"
-          echo "🔧 Flutter Version: $(flutter --version | head -1)"
-          echo "⚙️  Node.js Version: $(node --version 2>/dev/null || echo 'Not available')"
-          echo ""
-          
-          echo "📊 COVERAGE ANALYSIS:"
-          if [ -f "coverage/lcov.info" ]; then
-            lines=$(wc -l < coverage/lcov.info)
-            if [ "$lines" -gt 0 ]; then
-              echo "✅ Coverage report: $lines lines"
-            else
-              echo "⚠️  Coverage report is empty"
-            fi
-          else
-            echo "❌ No coverage report generated"
-          fi
-          
-          echo ""
-          echo "🧪 TEST RESULTS:"
-          if [ -f "test-results.json" ]; then
-            echo "✅ Test results: $(wc -l < test-results.json) lines"
-          else
-            echo "❌ No test results generated"
-          fi
-          
-          echo ""
-          echo "🔍 FILES ANALYZED:"
-          echo "Dart files: $(find lib -name "*.dart" 2>/dev/null | wc -l || echo 0)"
-          echo "Test files: $(find test -name "*.dart" 2>/dev/null | wc -l || echo 0)"
-          if [ -d "backend" ]; then
-            echo "Backend JS files: $(find backend -name "*.js" -o -name "*.ts" 2>/dev/null | wc -l || echo 0)"
-          fi
-          
-          echo ""
-          echo "🎉 Analysis workflow completed!"
-          echo "Check SonarCloud dashboard for detailed results."
-          echo "=================================================="
+          name: sonarcloud-report
+          path: sonar-report/
