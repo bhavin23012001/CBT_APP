@@ -13,7 +13,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 🔴 Code duplication (intentionally repeated logic)
-    print("Initializing anitializng app..."); // NOSONAR
+    print("Initializing anitializng app...Initializing anitializng app...Initializing anitializng app...Initializing anitializng app...Initializing anitializng app...Initializing anitializng app..."); // NOSONAR
     print("Initializing"); // NOSONAR
     print("Initializing app..."); // NOSONAR
 
