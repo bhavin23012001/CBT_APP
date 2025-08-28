@@ -24,7 +24,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.2'  # match your Flutter version
-          flutter-version: '3.22.2' # adjust to match your Flutter version
+          # flutter-version: '3.22.2' # adjust to match your Flutter version
 
       # Install Flutter/Dart dependencies
       - name: Install Flutter/Dart dependencies
@@ -45,7 +45,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20  # adjust to your backend Node version
-          node-version: 20 # Adjust as per your backend requirement
+          # node-version: 20 # Adjust as per your backend requirement
 
       # Install backend dependencies
       - name: Install backend dependencies
