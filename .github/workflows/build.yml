@@ -1,4 +1,5 @@
 name: SonarCloud Analysis
+
 on:
   push:
     branches:
@@ -8,12 +9,11 @@ on:
 
 jobs:
   sonarcloud:
-    name: Code Quality & Testing
+    name: Code Quality
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    
+    timeout-minutes: 15
     steps:
-      # Checkout repository
+      # Checkout repo
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -22,372 +22,52 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.2'
+          flutter-version: '3.22.2' # adjust to match your Flutter version
 
-      # Setup Node.js for backend
+      # Install Flutter/Dart dependencies
+      - name: Install Flutter/Dart dependencies
+        run: flutter pub get
+
+      # Run tests with coverage (Flutter/Dart)
+      - name: Run Flutter/Dart tests with coverage
+        run: flutter test --coverage
+
+      # Setup Node.js (for backend)
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-
-      # Verify project structure
-      - name: Verify Project Structure
-        run: |
-          echo "🔍 Verifying project structure..."
-          
-          echo "📦 pubspec.yaml content:"
-          head -10 pubspec.yaml
-          
-          echo ""
-          echo "📁 Project structure:"
-          ls -la
-          
-          echo ""
-          echo "📱 lib directory:"
-          find lib -type f -name "*.dart" | head -10
-          
-          echo ""
-          echo "🧪 test directory:"
-          find test -type f -name "*.dart" | head -10
-
-      # Install Flutter dependencies
-      - name: Install Flutter Dependencies
-        run: |
-          echo "📥 Installing Flutter dependencies..."
-          flutter pub get
-          echo "✅ Flutter dependencies installed"
-
-      # Create build configuration for mockito
-      - name: Create Build Configuration
-        run: |
-          if [ ! -f "build.yaml" ]; then
-            cat > build.yaml << 'EOF'
-          targets:
-            $default:
-              builders:
-                mockito|mockBuilder:
-                  generate_for:
-                    - test/**_test.dart
-                  options:
-                    missing_cache: loose
-          EOF
-            echo "✅ build.yaml created"
-          else
-            echo "✅ build.yaml already exists"
-          fi
-
-      # Generate mocks
-      - name: Generate Mocks
-        continue-on-error: true
-        run: |
-          echo "🔧 Generating mock classes..."
-          if flutter packages pub run build_runner build --delete-conflicting-outputs; then
-            echo "✅ Mock generation successful"
-            find . -name "*.mocks.dart" -type f || echo "No mock files found"
-          else
-            echo "⚠️  Mock generation failed, continuing without mocks"
-          fi
+          node-version: 20 # Adjust as per your backend requirement
 
       # Install backend dependencies
-      - name: Install Backend Dependencies
-        continue-on-error: true
+      - name: Install backend dependencies
         run: |
-          if [ -d "backend" ] && [ -f "backend/package.json" ]; then
-            echo "📥 Installing backend dependencies..."
-            cd backend
-            npm install
-            cd ..
-            echo "✅ Backend dependencies installed"
-          else
-            echo "ℹ️  No backend found, skipping backend setup"
-          fi
+          cd backend
+          npm install
+          cd ..
 
-      # Run Flutter tests with coverage
-      - name: Run Flutter Tests with Coverage
+      # Run backend tests with coverage (Node.js using Jest)
+      - name: Run backend tests with coverage
         run: |
-          echo "🧪 Running Flutter tests with coverage..."
-          
-          # Create coverage directory
-          mkdir -p coverage
-          
-          # Run model tests first (most likely to succeed)
-          echo "Running model tests..."
-          if [ -d "test/models" ]; then
-            flutter test test/models/ --coverage --reporter expanded || echo "⚠️ Some model tests failed"
-          fi
-          
-          # Run all tests
-          echo "Running all tests..."
-          if flutter test --coverage --reporter expanded; then
-            echo "✅ All Flutter tests completed successfully"
-          else
-            echo "⚠️  Some tests failed, but coverage may still be generated"
-          fi
-          
-          # Verify coverage file exists and has content
-          if [ -f "coverage/lcov.info" ]; then
-            echo "✅ Coverage file generated"
-            echo "File size: $(wc -c < coverage/lcov.info) bytes"
-            echo "Line count: $(wc -l < coverage/lcov.info) lines"
-            
-            # Check if coverage has meaningful data
-            if [ $(wc -l < coverage/lcov.info) -gt 5 ]; then
-              echo "✅ Coverage file contains meaningful data"
-            else
-              echo "⚠️  Coverage file is very small, adding minimal data"
-              echo "TN:" > coverage/lcov.info
-              echo "SF:lib/models/bus_stop.dart" >> coverage/lcov.info
-              echo "DA:1,1" >> coverage/lcov.info
-              echo "DA:2,1" >> coverage/lcov.info
-              echo "LF:2" >> coverage/lcov.info
-              echo "LH:2" >> coverage/lcov.info
-              echo "end_of_record" >> coverage/lcov.info
-            fi
-          else
-            echo "⚠️  No coverage file generated, creating minimal one"
-            echo "TN:" > coverage/lcov.info
-            echo "SF:lib/models/bus_stop.dart" >> coverage/lcov.info
-            echo "DA:1,1" >> coverage/lcov.info
-            echo "DA:2,1" >> coverage/lcov.info
-            echo "SF:lib/screens/home_screen.dart" >> coverage/lcov.info
-            echo "DA:1,1" >> coverage/lcov.info
-            echo "DA:2,0" >> coverage/lcov.info
-            echo "LF:4" >> coverage/lcov.info
-            echo "LH:3" >> coverage/lcov.info
-            echo "end_of_record" >> coverage/lcov.info
-          fi
-          
-          echo "📊 Final coverage summary:"
-          wc -l coverage/lcov.info
-
-      # Run backend tests with coverage
-      - name: Run Backend Tests with Coverage
-        continue-on-error: true
-        run: |
-          if [ -d "backend" ] && [ -f "backend/package.json" ]; then
-            echo "🧪 Running backend tests..."
-            cd backend
-            
-            # Try different test commands
-            if npm run test:coverage 2>/dev/null; then
-              echo "✅ Backend tests with coverage completed"
-            elif npm run test 2>/dev/null; then
-              echo "✅ Backend tests completed (no coverage)"
-            elif npm test 2>/dev/null; then
-              echo "✅ Backend tests completed"
-            else
-              echo "ℹ️  No backend tests to run"
-            fi
-            cd ..
-          else
-            echo "ℹ️  No backend to test"
-          fi
-
-      # Verify coverage before SonarCloud
-      - name: Verify Coverage Report
-        run: |
-          echo "📊 Coverage Report Verification"
-          echo "==============================="
-          
-          if [ -f "coverage/lcov.info" ]; then
-            echo "✅ Coverage file exists"
-            echo "📏 File size: $(wc -c < coverage/lcov.info) bytes"
-            echo "📄 Line count: $(wc -l < coverage/lcov.info) lines"
-            echo ""
-            echo "📈 Coverage Statistics:"
-            echo "Source files: $(grep -c "^SF:" coverage/lcov.info 2>/dev/null || echo '0')"
-            echo "Test data lines: $(grep -c "^DA:" coverage/lcov.info 2>/dev/null || echo '0')"
-            echo ""
-            echo "📋 First 10 lines of coverage file:"
-            head -10 coverage/lcov.info
-          else
-            echo "❌ No coverage file found"
-            exit 1
-          fi
-
-      # Create SonarCloud configuration
-      - name: Create SonarCloud Configuration
-        run: |
-          echo "⚙️  Creating SonarCloud configuration..."
-          
-          cat > sonar-project.properties << 'EOF'
-          # Required metadata
-          sonar.projectKey=bhavin23012001_CBT_APP
-          sonar.organization=bhavin23012001
-          sonar.projectName=CBT_APP
-          sonar.projectVersion=1.0
-          
-          # Source settings
-          sonar.sources=lib
-          sonar.tests=test
-          sonar.sourceEncoding=UTF-8
-          
-          # Language settings
-          sonar.dart.coverage.reportPaths=coverage/lcov.info
-          
-          # Exclusions
-          sonar.exclusions=**/*.g.dart,**/*.freezed.dart,**/*.gen.dart,**/*.mocks.dart,**/build/**,**/.dart_tool/**,android/**,ios/**,web/**,linux/**,macos/**,windows/**
-          sonar.test.exclusions=**/*_test.dart
-          
-          # Disable scanners for non-applicable languages
-          sonar.c.file.suffixes=-
-          sonar.cpp.file.suffixes=-
-          sonar.objc.file.suffixes=-
-          
-          # Quality gate
-          sonar.qualitygate.wait=true
-          EOF
-          
-          echo "✅ SonarCloud configuration created"
+          cd backend
+          npm run test:coverage
+          cd ..
 
       # Run SonarCloud analysis
-      - name: SonarCloud Analysis
-        id: sonarcloud
+      - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
-        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      # Show SonarCloud analysis result
-      - name: SonarCloud Result Status
-        if: always()
+      # Save SonarCloud analysis report (optional, for debugging)
+      - name: Save SonarCloud report
         run: |
-          echo "🔍 SonarCloud Analysis Result"
-          echo "============================"
-          if [ "${{ steps.sonarcloud.outcome }}" == "success" ]; then
-            echo "✅ SonarCloud Quality Gate: PASSED"
-            echo "🎉 All quality checks completed successfully!"
-          elif [ "${{ steps.sonarcloud.outcome }}" == "failure" ]; then
-            echo "⚠️  SonarCloud Quality Gate: FAILED"
-            echo "📋 The analysis completed but didn't meet quality gate criteria"
-            echo "🔗 Check details: https://sonarcloud.io/dashboard?id=bhavin23012001_CBT_APP&branch=main"
-            echo "📈 Pipeline will continue despite quality gate failure"
-          else
-            echo "❓ SonarCloud Analysis: ${{ steps.sonarcloud.outcome }}"
-          fi
-          echo ""
+          mkdir -p sonar-report
+          cp -r .scannerwork/* sonar-report/
 
-      # Create analysis artifacts
-      - name: Create Analysis Summary
-        if: always()
-        run: |
-          echo "💾 Creating analysis summary..."
-          
-          mkdir -p analysis-results
-          
-          # Create comprehensive summary
-          cat > analysis-results/summary.md << EOF
-          # Code Analysis Summary
-          
-          **Date:** $(date)
-          **Flutter Version:** $(flutter --version | head -1)
-          **Workflow:** ${{ github.workflow }}
-          **Run ID:** ${{ github.run_id }}
-          **SonarCloud Status:** ${{ steps.sonarcloud.outcome }}
-          
-          ## SonarCloud Analysis
-          - **Status:** ${{ steps.sonarcloud.outcome }}
-          - **Quality Gate:** $([ "${{ steps.sonarcloud.outcome }}" == "success" ] && echo "✅ PASSED" || echo "⚠️ FAILED")
-          - **Dashboard:** https://sonarcloud.io/dashboard?id=bhavin23012001_CBT_APP&branch=main
-          
-          ## Coverage Report
-          EOF
-          
-          if [ -f "coverage/lcov.info" ]; then
-            echo "- ✅ Coverage file: $(wc -l < coverage/lcov.info) lines" >> analysis-results/summary.md
-            echo "- ✅ File size: $(wc -c < coverage/lcov.info) bytes" >> analysis-results/summary.md
-            echo "- ✅ Source files: $(grep -c "^SF:" coverage/lcov.info 2>/dev/null || echo '0')" >> analysis-results/summary.md
-            
-            # Copy coverage file
-            cp coverage/lcov.info analysis-results/
-          else
-            echo "- ❌ No coverage file generated" >> analysis-results/summary.md
-          fi
-          
-          # Add project structure info
-          echo "" >> analysis-results/summary.md
-          echo "## Project Structure" >> analysis-results/summary.md
-          echo "- Dart files in lib: $(find lib -name "*.dart" 2>/dev/null | wc -l)" >> analysis-results/summary.md
-          echo "- Test files: $(find test -name "*.dart" 2>/dev/null | wc -l)" >> analysis-results/summary.md
-          
-          # Copy important files
-          cp pubspec.yaml analysis-results/ 2>/dev/null || echo "No pubspec.yaml to copy"
-          cp sonar-project.properties analysis-results/ 2>/dev/null || echo "No sonar config to copy"
-          
-          echo "✅ Analysis summary created"
-
-      # Upload artifacts
-      - name: Upload Analysis Results
+      # Upload report artifact (optional, for debugging)
+      - name: Upload SonarCloud report as artifact
         uses: actions/upload-artifact@v4
-        if: always()
         with:
-          name: code-analysis-results-${{ github.run_id }}
-          path: analysis-results/
-          retention-days: 30
-
-      # Final status report
-      - name: Final Status Report
-        if: always()
-        run: |
-          echo "=================================================="
-          echo "🎯 FINAL ANALYSIS REPORT"
-          echo "=================================================="
-          echo "📅 Completed: $(date)"
-          echo "🔧 Flutter: $(flutter --version | head -1)"
-          echo "⚙️  Workflow: ${{ github.workflow }}"
-          echo "🏃 Run ID: ${{ github.run_id }}"
-          echo ""
-          
-          echo "🔍 SONARCLOUD STATUS:"
-          if [ "${{ steps.sonarcloud.outcome }}" == "success" ]; then
-            echo "✅ Quality Gate: PASSED"
-            echo "🎉 All quality criteria met!"
-          elif [ "${{ steps.sonarcloud.outcome }}" == "failure" ]; then
-            echo "⚠️  Quality Gate: FAILED"
-            echo "📋 Analysis completed but quality criteria not met"
-            echo "🔄 Pipeline continued despite failure"
-          else
-            echo "❓ Status: ${{ steps.sonarcloud.outcome }}"
-          fi
-          echo ""
-          
-          echo "📊 COVERAGE STATUS:"
-          if [ -f "coverage/lcov.info" ] && [ $(wc -l < coverage/lcov.info) -gt 5 ]; then
-            echo "✅ Coverage: GENERATED ($(wc -l < coverage/lcov.info) lines)"
-            echo "✅ Size: $(wc -c < coverage/lcov.info) bytes"
-            echo "✅ Files: $(grep -c "^SF:" coverage/lcov.info 2>/dev/null || echo '0') source files"
-          else
-            echo "⚠️  Coverage: LIMITED OR MISSING"
-          fi
-          
-          echo ""
-          echo "🏗️  BUILD STATUS:"
-          echo "✅ Flutter dependencies: INSTALLED"
-          echo "✅ Project structure: VERIFIED"
-          if [ -f "sonar-project.properties" ]; then
-            echo "✅ SonarCloud config: CREATED"
-          else
-            echo "❌ SonarCloud config: MISSING"
-          fi
-          
-          echo ""
-          echo "🎉 PIPELINE OUTCOME:"
-          echo "✅ Workflow completed successfully"
-          echo "📈 Quality analysis available on SonarCloud"
-          if [ "${{ steps.sonarcloud.outcome }}" == "failure" ]; then
-            echo "⚠️  Quality gate failed but pipeline continued"
-            echo "💡 Consider reviewing quality issues when possible"
-          fi
-          echo ""
-          echo "🔗 Check SonarCloud dashboard for detailed results:"
-          echo "https://sonarcloud.io/project/overview?id=bhavin23012001_CBT_APP"
-          echo "=================================================="
-
-      # This step demonstrates that the workflow continues
-      - name: Post-Analysis Steps
-        if: always()
-        run: |
-          echo "🚀 This step runs regardless of SonarCloud quality gate status!"
-          echo "✅ You can add deployment or other steps here"
-          echo "📦 Pipeline execution continues normally"
+          name: sonarcloud-report
+          path: sonar-report/
